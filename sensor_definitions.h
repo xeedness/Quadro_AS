@@ -54,6 +54,22 @@
 // and offsets.
 //
 #define MPU6050_AUX_VDDIO          0x01   // R/W
+#define MPU6050_XGOFFS_TC        0x00 // Bit 7 PWR_MODE, bits 6:1 XG_OFFS_TC, bit 0 OTP_BNK_VLD
+#define MPU6050_YGOFFS_TC        0x01
+#define MPU6050_ZGOFFS_TC        0x02
+#define MPU6050_X_FINE_GAIN      0x03 // [7:0] fine gain
+#define MPU6050_Y_FINE_GAIN      0x04
+#define MPU6050_Z_FINE_GAIN      0x05
+#define MPU6050_XA_OFFSET_H      0x06 // User-defined trim values for accelerometer
+#define MPU6050_XA_OFFSET_L_TC   0x07
+#define MPU6050_YA_OFFSET_H      0x08
+#define MPU6050_YA_OFFSET_L_TC   0x09
+#define MPU6050_ZA_OFFSET_H      0x0A
+#define MPU6050_ZA_OFFSET_L_TC   0x0B
+#define MPU6050_SELF_TEST_X			0x0D
+#define MPU6050_SELF_TEST_Y			0x0E
+#define MPU6050_SELF_TEST_Z			0x0F
+#define MPU6050_SELF_TEST_A			0x10
 #define MPU6050_SMPLRT_DIV         0x19   // R/W
 #define MPU6050_CONFIG             0x1A   // R/W
 #define MPU6050_GYRO_CONFIG        0x1B   // R/W

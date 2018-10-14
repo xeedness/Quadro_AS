@@ -34,7 +34,9 @@
 #include <stdio.h>
 #include "esc.h"
 #include "sensor.h"
+#include "pid.h"
 
+int BaseSpeed;
 int CurrentSpeed;
 int Step = 50;
 
@@ -42,7 +44,10 @@ int Step = 50;
 //#define SENSOR_AXIS_TEST
 //#define AXIS_TEST
 
-
+int dataCount = 1000;
+#define STARTUP_TIME 15000
+#define RUNTIME 10000
+#define PID_FACTOR 1.0f
 #define MAX_FIFO_DATA 100
 void onFifoFull() {
 	printf("Interrupt\n");
@@ -77,10 +82,17 @@ void printSensorData() {
 	sensorData.value.z_gyro);
 }
 
+void onDataReady() {
+	//printf("dataCount: %d\n", dataCount);
+	updateOrientation();
+	
+}
+
 void setup() {
 	sysclk_init();
 	board_init();
 	delay_init(sysclk_get_cpu_hz());
+	
 	
 	const usart_serial_options_t uart_serial_options = {
 		.baudrate = CONF_UART_BAUDRATE,
@@ -91,16 +103,64 @@ void setup() {
 	printf("Setup: Serial port communication at 9600bps\n");
 
     setupESC();
-    //Enable interrupt
-	pmc_enable_periph_clk(ID_PIOB);
-	pio_set_input(PIOB, PIO_PB26, PIO_PULLUP);
-	pio_handler_set(PIOB, ID_PIOB, PIO_PB26, PIO_IT_FALL_EDGE, printSensorData);
-	pio_enable_interrupt(PIOB, PIO_PB26);
-	NVIC_EnableIRQ(PIOB_IRQn);
+   
 	//gpio_configure_pin(PIO_PA22_IDX, PIO_TYPE_PIO_INPUT | PIO_PULLUP)
     //pinMode(22, INPUT_PULLUP);
     //attachInterrupt(digitalPinToInterrupt(22), onFifoFull, CHANGE);
-    setupSensor(); 
+    setupSensor();
+	
+	set_constants(1.0f,1.0f,1.0f);
+	set_target(0,0);
+	BaseSpeed = 1200;
+	
+	//Enable interrupt
+	pmc_enable_periph_clk(ID_PIOB);
+	pio_set_input(PIOB, PIO_PB26, PIO_PULLUP);
+	pio_handler_set(PIOB, ID_PIOB, PIO_PB26, PIO_IT_FALL_EDGE, onDataReady);
+	pio_enable_interrupt(PIOB, PIO_PB26);
+	NVIC_EnableIRQ(PIOB_IRQn);
+}
+
+uint32_t runCounter = 0;
+uint32_t outputCounter = 0;
+void runAutomatic() {
+	minThrottle();
+	while(runCounter++ < STARTUP_TIME/1000) {
+		printf("Starting in %d\n", (STARTUP_TIME/1000)-runCounter);
+		delay_ms(1000);
+	}
+	runCounter = 0;
+	while(1) {
+		orientation_t orientation = getOrientation();
+		feed_angles(orientation.ax, orientation.ay);
+		float pid_x, pid_y;
+		pid_values(&pid_x, &pid_y);
+		
+		//Sum PID values with negated values for right and rear respectively
+		int front_left_speed = BaseSpeed + (pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
+		int front_right_speed = BaseSpeed + (pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
+		int rear_left_speed = BaseSpeed + (-pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
+		int rear_right_speed = BaseSpeed + (-pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
+		
+		
+		REG_PWM_CDTYUPD0 = front_left_speed;
+		REG_PWM_CDTYUPD1 = front_right_speed;
+		REG_PWM_CDTYUPD2 = rear_right_speed;
+		REG_PWM_CDTYUPD3 = rear_left_speed;
+		
+		if(++outputCounter > 10) {
+			outputCounter = 0;		
+			printf("PID Values: %d, %d\n", (int)pid_x, (int)pid_y);
+			printf("Motor Values:\n");
+			printf("%d %d\n%d %d\n", front_left_speed, front_right_speed, rear_left_speed, rear_right_speed);
+		}
+		if(runCounter++ > RUNTIME/20) {
+			printf("Stopping");
+			minThrottle();
+			break;
+		}
+		delay_ms(20);
+	}
 }
 
 void run() {
@@ -177,9 +237,8 @@ void run() {
             CurrentSpeed = ESC_LOW;
         }
         REG_PWM_CDTYUPD0 = REG_PWM_CDTYUPD1 = REG_PWM_CDTYUPD2 = REG_PWM_CDTYUPD3 = CurrentSpeed;
-		printSensorData();
-		delay_ms(333);
-        }
+		delay_ms(100);
+    }
     //}
 }
 
@@ -194,9 +253,10 @@ int main (void) {
 #ifdef AXIS_TEST
     axisTest();
 #endif
+	runAutomatic();
     run();
 	/*while(1) {
-		delay_s(2);
+		delay_s(5);
 		printf("Running\n");
 		//onFifoFull();
 	}*/

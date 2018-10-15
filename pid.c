@@ -6,14 +6,11 @@
  */ 
 
 #include "pid.h"
-#include <string.h>
  void init_pid() {
-	 memset(angles_x, 0, HISTORY_SIZE*sizeof(float));
-	 memset(angles_y, 0, HISTORY_SIZE*sizeof(float));
-	 pid_value_x = 0;
-	 pid_value_y = 0;
-	 target_x = 0;
-	 target_y = 0;
+	 pid_value_x = pid_value_y = 0;
+	 target_x = target_y = 0;
+	 i_value_x = i_value_y = 0;
+	 last_error_x = last_error_y = 0;
  }
  
  void set_constants(float p_k, float i_k, float d_k) {
@@ -28,36 +25,32 @@
  }
  
  void feed_angles(float angleX, float angleY) {
+	 float error_x, p_value_x, d_value_x;
+	 float error_y, p_value_y, d_value_y;
 	 
-	 //Fill history
-	 for(int i=HISTORY_SIZE-1;i>0;i--) {
-		 angles_x[i+1] = angles_x[i];
-		 angles_y[i+1] = angles_y[i];
-	 }
 	 //Calc error
-	 angles_x[0] = angleX-target_x;
-	 angles_y[0] = angleY-target_y;
+	 error_x = angleX-target_x;
+	 error_y = angleY-target_y; 
 	 
+	 // P Value is the error directly
+	 p_value_x = error_x;
+	 p_value_y = error_y;
 	 
-	 float p_value_x, i_value_x, d_value_x;
-	 float p_value_y, i_value_y, d_value_y;
+	 // I Value is the discrete integral (sum) of the product of error and time
+	 i_value_x += SAMPLE_TIME * error_x;
+	 i_value_y += SAMPLE_TIME * error_y;	 
 	 
-	 p_value_x = angles_x[0];
-	 p_value_y = angles_y[0];
-	 i_value_x = 0;
-	 i_value_y = 0;
+	 // D Value is the change of error
+	 d_value_x = (error_x-last_error_x)/SAMPLE_TIME;
+	 d_value_y = (error_y-last_error_y)/SAMPLE_TIME;
 	 
-	 for(int i=0;i<HISTORY_SIZE;i++) {
-		i_value_x += SAMPLE_TIME * angles_x[i];
-		i_value_y += SAMPLE_TIME * angles_y[i];
-	 }
-	 
-	 
-	 d_value_x = (angles_x[0]-angles_x[1])/SAMPLE_TIME;
-	 d_value_y = (angles_y[0]-angles_y[1])/SAMPLE_TIME;
-	 
+	 // Generate pid value by weighted sum
 	 pid_value_x = k1*p_value_x+k2*i_value_x+k3*d_value_x;
 	 pid_value_y = k1*p_value_y+k2*i_value_y+k3*d_value_y; 
+	 
+	 // Remember the last error to calc next values
+	 last_error_x = error_x;
+	 last_error_y = error_y;
  }
  
  void set_target(float angleX, float angleY) {

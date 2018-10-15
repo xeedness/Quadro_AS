@@ -49,46 +49,35 @@ int dataCount = 1000;
 #define RUNTIME 10000
 #define PID_FACTOR 1.0f
 #define MAX_FIFO_DATA 100
-void onFifoFull() {
-	printf("Interrupt\n");
-    accel_gyro_union data[MAX_FIFO_DATA];
-    uint32_t count = getFifoSensorData(data, MAX_FIFO_DATA);
-    printf("Received %d data points\n", count); 
-    for(int i=0;i<count;i++) {
-		printf("AcX = %d |  | AcY = %d | AcZ = %d | Tmp = %.2 | GyX = %d | GyY = %d | GyZ = %d\n", 
-			data[i].value.x_accel, 
-			data[i].value.y_accel,
-			data[i].value.z_accel,
-			//data[i].Tmp/340.00+36.53,
-			data[i].value.x_gyro,
-			data[i].value.y_gyro,
-			data[i].value.z_gyro);
-    }
-}
 
-void printSensorData() {
-	//printf("Interrupt\n");
-	accel_t_gyro_union sensorData;
-	if(getSensorData(&sensorData) != 0) {
-		return;
-	}
-	printf("AcX = %d | AcY = %d | AcZ = %d | GyX = %d | GyY = %d | GyZ = %d\n",
-	sensorData.value.x_accel,
-	sensorData.value.y_accel,
-	sensorData.value.z_accel,
-	//sensorData.value.temperature/340.0f+36.53f,
-	sensorData.value.x_gyro,
-	sensorData.value.y_gyro,
-	sensorData.value.z_gyro);
-}
+void onFifoFull(void);
+void printSensorData(void);
+void onDataReady(uint32_t arg0, uint32_t arg1);
+void runAutomatic(void);
+void setup(void);
+void run(void);
 
-void onDataReady() {
-	//printf("dataCount: %d\n", dataCount);
-	updateOrientation();
-	
-}
+int main (void) {
+    setup();
+#ifdef SENSOR_AXIS_TEST
+    sensorAxisTest();
+#endif
+#ifdef THROTTLE_SETUP
+    setupThrottleRange(); 
+#endif
+#ifdef AXIS_TEST
+    axisTest();
+#endif
+	runAutomatic();
+    run();
+	/*while(1) {
+		delay_s(5);
+		printf("Running\n");
+		//onFifoFull();
+	}*/
+}  // end of main
 
-void setup() {
+void setup(void) {
 	sysclk_init();
 	board_init();
 	delay_init(sysclk_get_cpu_hz());
@@ -121,9 +110,9 @@ void setup() {
 	NVIC_EnableIRQ(PIOB_IRQn);
 }
 
-uint32_t runCounter = 0;
-uint32_t outputCounter = 0;
-void runAutomatic() {
+int runCounter = 0;
+int outputCounter = 0;
+void runAutomatic(void) {
 	minThrottle();
 	while(runCounter++ < STARTUP_TIME/1000) {
 		printf("Starting in %d\n", (STARTUP_TIME/1000)-runCounter);
@@ -131,7 +120,8 @@ void runAutomatic() {
 	}
 	runCounter = 0;
 	while(1) {
-		orientation_t orientation = getOrientation();
+		orientation_t orientation;
+		getOrientation(&orientation);
 		feed_angles(orientation.ax, orientation.ay);
 		float pid_x, pid_y;
 		pid_values(&pid_x, &pid_y);
@@ -163,7 +153,7 @@ void runAutomatic() {
 	}
 }
 
-void run() {
+void run(void) {
     minThrottle();
     printf("Running ESC\n");
     printf("Step = %d\n", Step);
@@ -242,23 +232,40 @@ void run() {
     //}
 }
 
-int main (void) {
-    setup();
-#ifdef SENSOR_AXIS_TEST
-    sensorAxisTest();
-#endif
-#ifdef THROTTLE_SETUP
-    setupThrottleRange(); 
-#endif
-#ifdef AXIS_TEST
-    axisTest();
-#endif
-	runAutomatic();
-    run();
-	/*while(1) {
-		delay_s(5);
-		printf("Running\n");
-		//onFifoFull();
-	}*/
-}  // end of main
+void onFifoFull(void) {
+	printf("Interrupt\n");
+	accel_gyro_union data[MAX_FIFO_DATA];
+	uint32_t count = getFifoSensorData(data, MAX_FIFO_DATA);
+	printf("Received %d data points\n", (int)count);
+	for(uint32_t i=0;i<count;i++) {
+		printf("AcX = %d |  | AcY = %d | AcZ = %d | GyX = %d | GyY = %d | GyZ = %d\n",
+		data[i].value.x_accel,
+		data[i].value.y_accel,
+		data[i].value.z_accel,
+		data[i].value.x_gyro,
+		data[i].value.y_gyro,
+		data[i].value.z_gyro);
+	}
+}
 
+void printSensorData(void) {
+	//printf("Interrupt\n");
+	accel_t_gyro_union sensorData;
+	if(getSensorData(&sensorData) != 0) {
+		return;
+	}
+	printf("AcX = %d | AcY = %d | AcZ = %d | GyX = %d | GyY = %d | GyZ = %d\n",
+	sensorData.value.x_accel,
+	sensorData.value.y_accel,
+	sensorData.value.z_accel,
+	//sensorData.value.temperature/340.0f+36.53f,
+	sensorData.value.x_gyro,
+	sensorData.value.y_gyro,
+	sensorData.value.z_gyro);
+}
+
+void onDataReady(uint32_t arg0, uint32_t arg1) {
+	//printf("dataCount: %d\n", dataCount);
+	updateOrientation();
+	
+}

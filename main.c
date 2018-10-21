@@ -48,15 +48,15 @@ int Step = 50;
 //#define AXIS_TEST
 
 int dataCount = 1000;
-#define STARTUP_TIME 15000
+#define STARTUP_TIME 5000
 #define RUN_TIME 10000
 #define LANDING_TIME 5000
-#define PID_FACTOR 1.0f
+#define PID_FACTOR 0.5f
 #define MAX_FIFO_DATA 100
 
 int state;
 int next_state;
-int state_timer_ms;
+unsigned long int state_timer_ms;
 int state_time_interval;
 #define STARTUP_STATE 0
 #define RUN_STATE 1
@@ -67,6 +67,10 @@ int front_left_speed;
 int front_right_speed;
 int rear_left_speed;
 int rear_right_speed;
+
+const float P_FACT = 0.4f;
+const float I_FACT = 0.001f;
+const float D_FACT = 0.0001f;
 
 void updateSpeed(void);
 void gotoState(int newState);
@@ -117,11 +121,11 @@ void setup(void) {
     setupESC();
     setupSensor();
 	
-	set_constants(0.4f,0.05f,0.1f);
+	set_constants(P_FACT,I_FACT,D_FACT);
 	set_target(0,0);
 	BaseSpeed = 1000;
-	LandingSpeed = 1300;
-	HoverSpeed = 1450;
+	LandingSpeed = 1200;
+	HoverSpeed = 1350;
 	MaxSpeed = 1800;
 	
 	//Enable sensor interrupt
@@ -187,7 +191,7 @@ void runAutomatic(void) {
 		//Process current state
 		switch(state) {
 		case(STARTUP_STATE):
-			printf("Starting in %d s\n", (STARTUP_TIME-state_timer_ms)/1000);
+			printf("Starting in %lu s\n", (STARTUP_TIME-state_timer_ms)/1000);
 			if(state_timer_ms >= STARTUP_TIME) {
 				next_state = RUN_STATE;
 			}
@@ -199,6 +203,10 @@ void runAutomatic(void) {
 			}
 			break;
 		case(LANDING_STATE):
+			if(BaseSpeed > LandingSpeed)
+			{
+				BaseSpeed--;
+			}
 			updateSpeed();
 			if(state_timer_ms >= LANDING_TIME) {
 				next_state = SHUTDOWN_STATE;
@@ -227,7 +235,7 @@ void runAutomatic(void) {
 			case(LANDING_STATE):
 				printf("Landing...");
 				state_time_interval = 20;
-				BaseSpeed = LandingSpeed;
+				//BaseSpeed = LandingSpeed;
 				break;
 			case(SHUTDOWN_STATE):
 				printf("Stopping...");

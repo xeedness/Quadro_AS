@@ -50,7 +50,7 @@ int Step = 50;
 int dataCount = 1000;
 #define STARTUP_TIME 15000
 #define RUN_TIME 10000
-#define LANDING_TIME 3000
+#define LANDING_TIME 5000
 #define PID_FACTOR 1.0f
 #define MAX_FIFO_DATA 100
 

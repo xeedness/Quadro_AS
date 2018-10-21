@@ -109,7 +109,6 @@ void setup(void) {
 	board_init();
 	delay_init(sysclk_get_cpu_hz());
 	
-	
 	const usart_serial_options_t uart_serial_options = {
 		.baudrate = CONF_UART_BAUDRATE,
 		.paritytype = CONF_UART_PARITY
@@ -117,8 +116,24 @@ void setup(void) {
 	sysclk_enable_peripheral_clock(CONSOLE_UART_ID);
 	stdio_serial_init(CONF_UART, &uart_serial_options);
 	printf("Setup: Serial port communication at 9600bps\n");
+	
+	//Enable sensor interrupt
+	pmc_enable_periph_clk(ID_PIOB);
+	pio_set_output(PIOB, PIO_PB21, LOW, DISABLE, ENABLE);
+	pio_clear(PIOB, PIO_PB21);
+	pio_set_input(PIOB, PIO_PB26, PIO_PULLUP);
+	pio_handler_set(PIOB, ID_PIOB, PIO_PB26, PIO_IT_FALL_EDGE, onDataReady);
+	pio_enable_interrupt(PIOB, PIO_PB26);
+	NVIC_EnableIRQ(PIOB_IRQn);
+	
+	setupESC();
+	
+	delay_s(1);
+	pio_set(PIOB, PIO_PB21);
+	
+	
 
-    setupESC();
+    
     setupSensor();
 	
 	set_constants(P_FACT,I_FACT,D_FACT);
@@ -128,14 +143,12 @@ void setup(void) {
 	HoverSpeed = 1350;
 	MaxSpeed = 1800;
 	
-	//Enable sensor interrupt
-	pmc_enable_periph_clk(ID_PIOB);
-	pio_set_input(PIOB, PIO_PB26, PIO_PULLUP);
-	pio_handler_set(PIOB, ID_PIOB, PIO_PB26, PIO_IT_FALL_EDGE, onDataReady);
-	pio_enable_interrupt(PIOB, PIO_PB26);
-	NVIC_EnableIRQ(PIOB_IRQn);
+	
+	printf("Interrupt Setup.\n");
+	
 	
 	delay_s(1);
+	printf("Setup completed.\n");
 }
 void gotoState(int newState) {
 	state = newState;

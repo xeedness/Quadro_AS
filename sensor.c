@@ -336,7 +336,7 @@ void setupSensor(void) {
     //MPU6050_SMPLRT_DIV GYRO SAMPLE RATE DIVIDER
     //MPU6050_INT_STATUS
     //MPU6050_PWR_MGMT_1 CLOCK SELECTION?
-	
+	delay_ms(200);
 	printf("Sensor Setup completed.\n");
 }
 

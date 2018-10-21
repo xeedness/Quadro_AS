@@ -11,7 +11,7 @@
 #define SAMPLES_PER_SECOND 100
 #define COMPLEMENTARY_ALPHA	0.1f	
 
-#define TWI_CLK 400000
+#define TWI_CLK 390000
 
 #define G_1 16384.0f
 #define DGS_250 131.072f

@@ -15,8 +15,8 @@
  
  void set_constants(float p_k, float i_k, float d_k) {
 	k1 = p_k;
-	k1 = i_k;
-	k1 = d_k; 
+	k2 = i_k;
+	k3 = d_k; 
  }
  
  void pid_values(float* x, float* y) {

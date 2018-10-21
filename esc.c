@@ -17,6 +17,7 @@ void maxThrottle(void) {
 }
 
 void setupESC(void) {
+	printf("ESC Setup ... ");
 	// PWM Set-up on pin: DAC1
 	REG_PMC_PCER1 |= PMC_PCER1_PID36;                     // Enable PWM
 	REG_PIOC_ABSR |= PIO_ABSR_P2;                        // Set PWM pin perhipheral type A or B, in this case B
@@ -32,6 +33,8 @@ void setupESC(void) {
 	REG_PWM_CPRD0 = REG_PWM_CPRD1 = REG_PWM_CPRD2 = REG_PWM_CPRD3 = 20000;                                // Set the PWM frequency 2MHz/(2 * 20000) = 50Hz
 	REG_PWM_CDTY0 = REG_PWM_CDTY1 = REG_PWM_CDTY2 = REG_PWM_CDTY3 = ESC_LOW;                              // Set the PWM duty cycle to 1500 - centre the servo
 	REG_PWM_ENA = PWM_ENA_CHID0 | PWM_ENA_CHID1 | PWM_ENA_CHID2 | PWM_ENA_CHID3;                          // Enable the PWM channel
+	minThrottle();
+	printf("done.\n");
 }
 
 void axisTest(void) {

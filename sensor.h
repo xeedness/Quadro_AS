@@ -15,6 +15,7 @@
 
 #define G_1 16384.0f
 #define DGS_250 131.072f
+#define G_1_MPS 9.80665f
 
 #define OFF_THRESH 1000
 #define LOW_THRESH 3000
@@ -31,12 +32,18 @@ struct SensorData {
 
 uint32_t sumCounter;
 int32_t gyroSumX, gyroSumY, gyroSumZ;
+int32_t accelSumX, accelSumY, accelSumZ;
 
 typedef struct orientation {
 	float ax, ay, az;
 } orientation_t;
 
+typedef struct position{
+	float x, y, z;
+} position_t;
+
 orientation_t current_orientation;
+position_t current_position;
 
 uint8_t sendPacket(uint8_t address, uint8_t data, int length);
 uint32_t receivePacket(uint8_t address, void* data, uint32_t size);
@@ -46,6 +53,7 @@ void selfTest(float* destination);
 void setupSensor(void);
 uint8_t getSensorData(accel_t_gyro_union* accel_t_gyro);
 void getOrientation(orientation_t* orientation);
+void getPosition(position_t* position);
 uint8_t updateOrientation(void);
 uint32_t getFifoSensorData(accel_gyro_union* accel_gyro, uint32_t max_count);
 void sensorAxisTest(void);

@@ -80,8 +80,6 @@ void openI2C(void) {
 		return;
 	}
 	
-	
-	
 	if (twi_probe(TWI1, MPU6050_I2C_ADDRESS) != TWI_SUCCESS) {
 		printf("I2C Probe failed.\n");
 	} else {
@@ -278,8 +276,12 @@ void selfTest(float* destination) {
 }
 
 void setupSensor(void) {
+	printf("Sensor Setup...\n");
 	delay_ms(200);
     openI2C();	
+	printf("I2C Opened\n");
+	sendPacket(MPU6050_PWR_MGMT_1, 0x80, 1); // Write a one to bit 7 reset bit; toggle reset device
+	printf("Device Reset\n");
 	selfTest(SelfTest);
 	
 	printf("AccelSelfTest: %d %d %d\n",(int)(100*SelfTest[0]), (int)(100*SelfTest[1]), (int)(100*SelfTest[2]));
@@ -321,8 +323,15 @@ void setupSensor(void) {
 	};
 	
 	current_orientation = orient;
+	position_t position = {
+		.x = 0,
+		.y = 0,
+		.z = 0
+	};
+	current_position = position;
 	
 	gyroSumX = gyroSumY = gyroSumZ = 0;
+	accelSumX = accelSumY =	accelSumZ = 0;
 	sumCounter = 0;
     //MPU6050_SMPLRT_DIV GYRO SAMPLE RATE DIVIDER
     //MPU6050_INT_STATUS
@@ -373,6 +382,9 @@ void getOrientation(orientation_t* orientation) {
 	(*orientation) = current_orientation;
 }
 
+void getPosition(position_t* position) {
+	(*position) = current_position;
+}
 uint32_t printCounter_sensor = SAMPLES_PER_SECOND;
 
 uint8_t updateOrientation(void) {
@@ -382,18 +394,20 @@ uint8_t updateOrientation(void) {
 		printf("Could not update orientation.\n");
 		return 0;	
 	}
+	
+	//Update orientation
 	if(++sumCounter < 1000/SAMPLES_PER_SECOND) {
 		gyroSumX += accel_t_gyro.value.x_gyro;
 		gyroSumY += accel_t_gyro.value.y_gyro;
 		gyroSumZ += accel_t_gyro.value.z_gyro;
+		accelSumX += accel_t_gyro.value.x_accel;
+		accelSumY += accel_t_gyro.value.y_accel;
+		accelSumZ += accel_t_gyro.value.z_accel+(int)(G_1);
 	} else {
 		dGyroOrientation.ax = (float)(gyroSumX)/(DGS_250);
 		dGyroOrientation.ay = (float)(gyroSumY)/(DGS_250);
 		dGyroOrientation.az = (float)(gyroSumZ)/(DGS_250);
-		gyroSumX = 0;
-		gyroSumY = 0;
-		gyroSumZ = 0;
-		sumCounter = 0;
+		
 		gyroOrientation.ax = current_orientation.ax + dGyroOrientation.ax/(1000.0f);
 		gyroOrientation.ay = current_orientation.ay + dGyroOrientation.ay/(1000.0f);
 		gyroOrientation.az = current_orientation.az + dGyroOrientation.az/(1000.0f);
@@ -432,6 +446,13 @@ uint8_t updateOrientation(void) {
 		current_orientation.ax = (1.0f-COMPLEMENTARY_ALPHA)*(gyroOrientation.ax) + COMPLEMENTARY_ALPHA*accelOrientation.ax;
 		current_orientation.ay = (1.0f-COMPLEMENTARY_ALPHA)*(gyroOrientation.ay) + COMPLEMENTARY_ALPHA*accelOrientation.ay;
 		current_orientation.az = gyroOrientation.az;
+		
+		//Update position
+		//current_position.x += (float)accelSumX*G_1_MPS/G_1/1000.0f;
+		//current_position.y += (float)accelSumY*G_1_MPS/G_1/1000.0f;
+		//current_position.z += (float)accelSumZ*G_1_MPS/G_1/1000.0f;
+		
+		
 		if(--printCounter_sensor == 0) {
 			printCounter_sensor = SAMPLES_PER_SECOND;
 			/*printf("AcX = %d | AcY = %d | AcZ = %d | GyX = %d | GyY = %d | GyZ = %d\n",
@@ -445,8 +466,18 @@ uint8_t updateOrientation(void) {
 			//printf("GyroOrientation: %d, %d, %d\n", (int) gyroOrientation.ax, (int) gyroOrientation.ay, (int) gyroOrientation.az);
 			//printf("AccelOrientation: %d, %d, %d\n", (int) accelOrientation.ax, (int) accelOrientation.ay, (int) accelOrientation.az);
 			//printf("New Orientation: %d, %d, %d\n", (int) current_orientation.ax, (int) current_orientation.ay, (int) current_orientation.az);
+			//printf("AccelerationSum: %d, %d, %d\n", (int) accelSumX, (int) accelSumY, (int) accelSumZ);
 		}
+		gyroSumX = 0;
+		gyroSumY = 0;
+		gyroSumZ = 0;
+		accelSumX = 0;
+		accelSumY = 0;
+		accelSumZ = 0;
+		sumCounter = 0;
 	}
+	
+	
 	return 1;
 }
 

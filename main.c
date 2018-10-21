@@ -36,8 +36,11 @@
 #include "sensor.h"
 #include "pid.h"
 
-int BaseSpeed;
+int LandingSpeed;
+int HoverSpeed;
+int MaxSpeed;
 int CurrentSpeed;
+int BaseSpeed;
 int Step = 50;
 
 //#define THROTTLE_SETUP
@@ -46,16 +49,36 @@ int Step = 50;
 
 int dataCount = 1000;
 #define STARTUP_TIME 15000
-#define RUNTIME 10000
+#define RUN_TIME 10000
+#define LANDING_TIME 3000
 #define PID_FACTOR 1.0f
 #define MAX_FIFO_DATA 100
 
+int state;
+int next_state;
+int state_timer_ms;
+int state_time_interval;
+#define STARTUP_STATE 0
+#define RUN_STATE 1
+#define LANDING_STATE 2
+#define SHUTDOWN_STATE 3
+
+int front_left_speed;
+int front_right_speed;
+int rear_left_speed;
+int rear_right_speed;
+
+void updateSpeed(void);
+void gotoState(int newState);
+void delayState(int ms);
 void onFifoFull(void);
 void printSensorData(void);
 void onDataReady(uint32_t arg0, uint32_t arg1);
 void runAutomatic(void);
 void setup(void);
 void run(void);
+
+
 
 int main (void) {
     setup();
@@ -69,7 +92,7 @@ int main (void) {
     axisTest();
 #endif
 	runAutomatic();
-    run();
+    //run();
 	/*while(1) {
 		delay_s(5);
 		printf("Running\n");
@@ -92,64 +115,131 @@ void setup(void) {
 	printf("Setup: Serial port communication at 9600bps\n");
 
     setupESC();
-   
-	//gpio_configure_pin(PIO_PA22_IDX, PIO_TYPE_PIO_INPUT | PIO_PULLUP)
-    //pinMode(22, INPUT_PULLUP);
-    //attachInterrupt(digitalPinToInterrupt(22), onFifoFull, CHANGE);
     setupSensor();
 	
-	set_constants(1.0f,1.0f,1.0f);
+	set_constants(0.4f,0.05f,0.1f);
 	set_target(0,0);
-	BaseSpeed = 1200;
+	BaseSpeed = 1000;
+	LandingSpeed = 1300;
+	HoverSpeed = 1450;
+	MaxSpeed = 1800;
 	
-	//Enable interrupt
+	//Enable sensor interrupt
 	pmc_enable_periph_clk(ID_PIOB);
 	pio_set_input(PIOB, PIO_PB26, PIO_PULLUP);
 	pio_handler_set(PIOB, ID_PIOB, PIO_PB26, PIO_IT_FALL_EDGE, onDataReady);
 	pio_enable_interrupt(PIOB, PIO_PB26);
 	NVIC_EnableIRQ(PIOB_IRQn);
+	
+	delay_s(1);
+}
+void gotoState(int newState) {
+	state = newState;
+	next_state = newState;
+	state_timer_ms = 0;
+}
+void delayState(int ms) {
+	delay_ms(ms);
+	state_timer_ms += ms;
 }
 
-int runCounter = 0;
 int outputCounter = 0;
-void runAutomatic(void) {
-	minThrottle();
-	while(runCounter++ < STARTUP_TIME/1000) {
-		printf("Starting in %d\n", (STARTUP_TIME/1000)-runCounter);
-		delay_ms(1000);
+void updateSpeed(void) {
+	orientation_t orientation;
+	getOrientation(&orientation);
+	feed_angles(orientation.ax, orientation.ay);
+	float pid_x, pid_y;
+	pid_values(&pid_x, &pid_y);
+	
+	//Sum PID values with negated values for right and rear respectively
+	front_left_speed = BaseSpeed + (pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
+	front_right_speed = BaseSpeed + (pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
+	rear_left_speed = BaseSpeed + (-pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
+	rear_right_speed = BaseSpeed + (-pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
+	
+	front_left_speed = min(front_left_speed, MaxSpeed);
+	front_right_speed = min(front_right_speed, MaxSpeed);
+	rear_left_speed = min(rear_left_speed, MaxSpeed);
+	rear_right_speed = min(rear_right_speed, MaxSpeed);
+	
+	REG_PWM_CDTYUPD0 = front_left_speed;
+	REG_PWM_CDTYUPD1 = front_right_speed;
+	REG_PWM_CDTYUPD2 = rear_right_speed;
+	REG_PWM_CDTYUPD3 = rear_left_speed;
+	
+	if(++outputCounter > 10) {
+		outputCounter = 0;
+		printf("PID Values: %d, %d\n", (int)pid_x, (int)pid_y);
+		printf("Motor Values:\n");
+		printf("%d %d\n%d %d\n", front_left_speed, front_right_speed, rear_left_speed, rear_right_speed);
+		//position_t position;
+		//getPosition(&position);
+		//printf("Position: %d, %d, %d [cm]\n", (int)(position.x*100.0f), (int)(position.y*100.0f), (int)(position.z*100.0f));
 	}
-	runCounter = 0;
+}
+
+
+void runAutomatic(void) {
+	state = -1;
+	next_state = STARTUP_STATE;	
 	while(1) {
-		orientation_t orientation;
-		getOrientation(&orientation);
-		feed_angles(orientation.ax, orientation.ay);
-		float pid_x, pid_y;
-		pid_values(&pid_x, &pid_y);
 		
-		//Sum PID values with negated values for right and rear respectively
-		int front_left_speed = BaseSpeed + (pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
-		int front_right_speed = BaseSpeed + (pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
-		int rear_left_speed = BaseSpeed + (-pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
-		int rear_right_speed = BaseSpeed + (-pid_x/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * PID_FACTOR * (ESC_HIGH-ESC_LOW));
-		
-		
-		REG_PWM_CDTYUPD0 = front_left_speed;
-		REG_PWM_CDTYUPD1 = front_right_speed;
-		REG_PWM_CDTYUPD2 = rear_right_speed;
-		REG_PWM_CDTYUPD3 = rear_left_speed;
-		
-		if(++outputCounter > 10) {
-			outputCounter = 0;		
-			printf("PID Values: %d, %d\n", (int)pid_x, (int)pid_y);
-			printf("Motor Values:\n");
-			printf("%d %d\n%d %d\n", front_left_speed, front_right_speed, rear_left_speed, rear_right_speed);
-		}
-		if(runCounter++ > RUNTIME/20) {
-			printf("Stopping");
-			minThrottle();
+		//Process current state
+		switch(state) {
+		case(STARTUP_STATE):
+			printf("Starting in %d s\n", (STARTUP_TIME-state_timer_ms)/1000);
+			if(state_timer_ms >= STARTUP_TIME) {
+				next_state = RUN_STATE;
+			}
+			break;
+		case(RUN_STATE):
+			updateSpeed();
+			if(state_timer_ms >= RUN_TIME) {
+				next_state = LANDING_STATE;
+			}
+			break;
+		case(LANDING_STATE):
+			updateSpeed();
+			if(state_timer_ms >= LANDING_TIME) {
+				next_state = SHUTDOWN_STATE;
+			}
+			break;
+		case(SHUTDOWN_STATE):
+			printf("Stopped\n");
+			break;
+		default:
+			printf("No State\n");
 			break;
 		}
-		delay_ms(20);
+		
+		if(state != next_state) {
+			//Process next state
+			switch(next_state) {
+			case(STARTUP_STATE):
+				minThrottle();
+				state_time_interval = 1000;
+				break;
+			case(RUN_STATE):
+				printf("Running...");
+				state_time_interval = 20;
+				BaseSpeed = HoverSpeed;
+				break;
+			case(LANDING_STATE):
+				printf("Landing...");
+				state_time_interval = 20;
+				BaseSpeed = LandingSpeed;
+				break;
+			case(SHUTDOWN_STATE):
+				printf("Stopping...");
+				state_time_interval = 1000;
+				minThrottle();
+				break;
+			}
+			gotoState(next_state);
+		} else {
+			// Increase time, when no state change occurred
+			delayState(state_time_interval);
+		}
 	}
 }
 
@@ -265,7 +355,7 @@ void printSensorData(void) {
 }
 
 void onDataReady(uint32_t arg0, uint32_t arg1) {
-	//printf("dataCount: %d\n", dataCount);
-	updateOrientation();
-	
+	if(state != SHUTDOWN_STATE) {
+		updateOrientation();
+	}
 }

@@ -35,38 +35,24 @@
 #include "esc.h"
 #include "sensor.h"
 #include "pid.h"
+#include "controller.h"
 
-int LandingSpeed;
-int HoverSpeed;
-int MaxSpeed;
-int CurrentSpeed;
-int BaseSpeed;
-int Step = 50;
+
 
 //#define THROTTLE_SETUP
 //#define SENSOR_AXIS_TEST
 //#define AXIS_TEST
 
-int dataCount = 1000;
-#define STARTUP_TIME 5000
-#define RUN_TIME 10000
-#define LANDING_TIME 5000
-#define PID_FACTOR 0.5f
-#define MAX_FIFO_DATA 100
+uint8_t sensor_data_ready = 0;
+uint32_t last_state_run_ticks = 0;
 
-int state;
-int next_state;
-unsigned long int state_timer_ms;
-int state_time_interval;
-#define STARTUP_STATE 0
-#define RUN_STATE 1
-#define LANDING_STATE 2
-#define SHUTDOWN_STATE 3
+uint32_t state_timer_us;
+uint32_t state_time_interval_ms;
 
-int front_left_speed;
-int front_right_speed;
-int rear_left_speed;
-int rear_right_speed;
+uint16_t front_left_speed;
+uint16_t front_right_speed;
+uint16_t rear_left_speed;
+uint16_t rear_right_speed;
 
 const float P_FACT = 0.4f;
 const float I_FACT = 0.001f;
@@ -74,15 +60,26 @@ const float D_FACT = 0.0001f;
 
 void updateSpeed(void);
 void gotoState(int newState);
-void delayState(int ms);
-void onFifoFull(void);
+void delayState(uint32_t ms);
 void printSensorData(void);
 void onDataReady(uint32_t arg0, uint32_t arg1);
-void runAutomatic(void);
+void runControl(void);
 void setup(void);
-void run(void);
+uint32_t elapsed_time_us(uint32_t past);
+uint32_t elapsed_time_ms(uint32_t past);
+float elapsed_time_s(uint32_t past);
 
+uint32_t elapsed_time_us(uint32_t past) {
+	return (ticks-past)*100;
+}
 
+uint32_t elapsed_time_ms(uint32_t past) {
+	return (ticks-past)/10;
+}
+
+float elapsed_time_s(uint32_t past) {
+	return (float)(ticks-past)/100000.0;
+}
 
 int main (void) {
     setup();
@@ -95,19 +92,19 @@ int main (void) {
 #ifdef AXIS_TEST
     axisTest();
 #endif
-	runAutomatic();
-    //run();
-	/*while(1) {
-		delay_s(5);
-		printf("Running\n");
-		//onFifoFull();
-	}*/
+	runControl();
 }  // end of main
+
+
 
 void setup(void) {
 	sysclk_init();
 	board_init();
 	delay_init(sysclk_get_cpu_hz());
+	
+	if (SysTick_Config(sysclk_get_cpu_hz() / 10000)) {
+		while (true) {  /* no error must happen here, otherwise this board is dead */ }
+	}
 	
 	const usart_serial_options_t uart_serial_options = {
 		.baudrate = CONF_UART_BAUDRATE,
@@ -117,6 +114,8 @@ void setup(void) {
 	stdio_serial_init(CONF_UART, &uart_serial_options);
 	printf("Setup: Serial port communication at 9600bps\n");
 	
+	
+	
 	//Enable sensor interrupt
 	pmc_enable_periph_clk(ID_PIOB);
 	pio_set_output(PIOB, PIO_PB21, LOW, DISABLE, ENABLE);
@@ -124,6 +123,7 @@ void setup(void) {
 	pio_set_input(PIOB, PIO_PB26, PIO_PULLUP);
 	pio_handler_set(PIOB, ID_PIOB, PIO_PB26, PIO_IT_FALL_EDGE, onDataReady);
 	pio_enable_interrupt(PIOB, PIO_PB26);
+	NVIC_SetPriority(PIOB_IRQn, 1);
 	NVIC_EnableIRQ(PIOB_IRQn);
 	
 	setupESC();
@@ -134,7 +134,8 @@ void setup(void) {
 	
 
     
-    setupSensor();
+    setupSensor(TWI1);
+	setup_controller(TWI0);
 	
 	set_constants(P_FACT,I_FACT,D_FACT);
 	set_target(0,0);
@@ -150,15 +151,31 @@ void setup(void) {
 	delay_s(1);
 	printf("Setup completed.\n");
 }
+
+void SysTick_Handler(void)
+{
+	ticks++;
+}
+
 void gotoState(int newState) {
 	state = newState;
 	next_state = newState;
-	state_timer_ms = 0;
+	state_timer_us = 0;
 }
-void delayState(int ms) {
-	delay_ms(ms);
-	state_timer_ms += ms;
-}
+
+
+/*void delayState(uint32_t us) {
+	uint32_t past_us = elapsed_time_us(last_measure);
+	//If delay already passed. Just wait full time, but add it to the state timer
+	if(past_us > us) {
+		delay_us(us);	
+		state_timer_us += us + past_us;
+	} else {
+		delay_ms(us - past_us);	
+		state_timer_us += us;
+	}
+	last_measure = ticks;
+}*/
 
 int outputCounter = 0;
 void updateSpeed(void) {
@@ -196,73 +213,104 @@ void updateSpeed(void) {
 }
 
 
-void runAutomatic(void) {
+void runControl(void) {
 	state = -1;
-	next_state = STARTUP_STATE;	
+	next_state = IDLE_STATE;	
 	while(1) {
-		
-		//Process current state
-		switch(state) {
-		case(STARTUP_STATE):
-			printf("Starting in %lu s\n", (STARTUP_TIME-state_timer_ms)/1000);
-			if(state_timer_ms >= STARTUP_TIME) {
-				next_state = RUN_STATE;
-			}
-			break;
-		case(RUN_STATE):
-			updateSpeed();
-			if(state_timer_ms >= RUN_TIME) {
-				next_state = LANDING_STATE;
-			}
-			break;
-		case(LANDING_STATE):
-			if(BaseSpeed > LandingSpeed)
-			{
-				BaseSpeed--;
-			}
-			updateSpeed();
-			if(state_timer_ms >= LANDING_TIME) {
-				next_state = SHUTDOWN_STATE;
-			}
-			break;
-		case(SHUTDOWN_STATE):
-			printf("Stopped\n");
-			break;
-		default:
-			printf("No State\n");
-			break;
+		if(sensor_data_ready) {
+			updateOrientation();
+			sensor_data_ready = 0;
 		}
-		
-		if(state != next_state) {
-			//Process next state
-			switch(next_state) {
-			case(STARTUP_STATE):
-				minThrottle();
-				state_time_interval = 1000;
+		//printf("Elapsed US: %lu\n", elapsed_time_us(last_state_run_ticks));
+		if(elapsed_time_ms(last_state_run_ticks) > state_time_interval_ms) {
+			//Process current state
+			switch(state) {
+			case(IDLE_STATE):
+				printf("Idle\n");
 				break;
 			case(RUN_STATE):
-				printf("Running...");
-				state_time_interval = 20;
-				BaseSpeed = HoverSpeed;
+				updateSpeed();
+				if(elapsed_time_s(last_control_ticks) > 10) {
+					next_state = LANDING_STATE;
+				}
 				break;
 			case(LANDING_STATE):
-				printf("Landing...");
-				state_time_interval = 20;
-				//BaseSpeed = LandingSpeed;
+				if(BaseSpeed > LandingSpeed)
+				{
+					BaseSpeed--;
+				}
+				updateSpeed();
+				if(state_timer_us >= LANDING_TIME*100) {
+					next_state = SHUTDOWN_STATE;
+				}
 				break;
 			case(SHUTDOWN_STATE):
-				printf("Stopping...");
-				state_time_interval = 1000;
-				minThrottle();
+				printf("Stopped\n");
+				break;
+			default:
+				printf("No State\n");
 				break;
 			}
-			gotoState(next_state);
-		} else {
-			// Increase time, when no state change occurred
-			delayState(state_time_interval);
+		
+			if(state != next_state) {
+				//Process next state
+				switch(next_state) {
+				case(IDLE_STATE):
+					minThrottle();
+					state_time_interval_ms = 1000;
+					break;
+				case(RUN_STATE):
+					printf("Running...");
+					state_time_interval_ms = 20;
+					BaseSpeed = HoverSpeed;
+					break;
+				case(LANDING_STATE):
+					printf("Landing...");
+					state_time_interval_ms = 20;
+					break;
+				case(SHUTDOWN_STATE):
+					printf("Stopping...");
+					state_time_interval_ms = 1000;
+					minThrottle();
+					break;
+				}
+				gotoState(next_state);
+			}
+			last_state_run_ticks = ticks;
 		}
+		// Increase time, when no state change occurred
+		delay_us(100);
 	}
 }
+
+
+
+void printSensorData(void) {
+	//printf("Interrupt\n");
+	accel_t_gyro_union sensorData;
+	if(getSensorData(&sensorData) != 0) {
+		return;
+	}
+	printf("AcX = %d | AcY = %d | AcZ = %d | GyX = %d | GyY = %d | GyZ = %d\n",
+	sensorData.value.x_accel,
+	sensorData.value.y_accel,
+	sensorData.value.z_accel,
+	//sensorData.value.temperature/340.0f+36.53f,
+	sensorData.value.x_gyro,
+	sensorData.value.y_gyro,
+	sensorData.value.z_gyro);
+}
+
+void onDataReady(uint32_t arg0, uint32_t arg1) {
+	if(state != SHUTDOWN_STATE) {
+		sensor_data_ready = 1;
+	}
+}
+
+
+
+/*
+int Step = 50;
 
 void run(void) {
     minThrottle();
@@ -340,43 +388,4 @@ void run(void) {
         REG_PWM_CDTYUPD0 = REG_PWM_CDTYUPD1 = REG_PWM_CDTYUPD2 = REG_PWM_CDTYUPD3 = CurrentSpeed;
 		delay_ms(100);
     }
-    //}
-}
-
-void onFifoFull(void) {
-	printf("Interrupt\n");
-	accel_gyro_union data[MAX_FIFO_DATA];
-	uint32_t count = getFifoSensorData(data, MAX_FIFO_DATA);
-	printf("Received %d data points\n", (int)count);
-	for(uint32_t i=0;i<count;i++) {
-		printf("AcX = %d |  | AcY = %d | AcZ = %d | GyX = %d | GyY = %d | GyZ = %d\n",
-		data[i].value.x_accel,
-		data[i].value.y_accel,
-		data[i].value.z_accel,
-		data[i].value.x_gyro,
-		data[i].value.y_gyro,
-		data[i].value.z_gyro);
-	}
-}
-
-void printSensorData(void) {
-	//printf("Interrupt\n");
-	accel_t_gyro_union sensorData;
-	if(getSensorData(&sensorData) != 0) {
-		return;
-	}
-	printf("AcX = %d | AcY = %d | AcZ = %d | GyX = %d | GyY = %d | GyZ = %d\n",
-	sensorData.value.x_accel,
-	sensorData.value.y_accel,
-	sensorData.value.z_accel,
-	//sensorData.value.temperature/340.0f+36.53f,
-	sensorData.value.x_gyro,
-	sensorData.value.y_gyro,
-	sensorData.value.z_gyro);
-}
-
-void onDataReady(uint32_t arg0, uint32_t arg1) {
-	if(state != SHUTDOWN_STATE) {
-		updateOrientation();
-	}
-}
+}*/

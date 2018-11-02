@@ -5,94 +5,8 @@
  *  Author: xeedn
  */ 
 #include "sensor.h"
+#include "i2c.h"
 #include <math.h>
-
-uint8_t sendPacket(uint8_t address, uint8_t data, int length) {
-	twi_package_t packet_write = {
-		.addr         = {address},      // TWI slave memory address data
-		.addr_length  = sizeof (uint8_t),    // TWI slave memory address data size
-		.chip         = MPU6050_I2C_ADDRESS,      // TWI slave bus address
-		.buffer       = (uint8_t *) &data, // transfer data source buffer
-		.length       = length  // transfer data size (bytes)
-	};
-	
-	//printf("Sending Packet %#02x to %#02x\n", data, address);
-	uint32_t err;
-	if ((err = twi_master_write(TWI1, &packet_write)) != TWI_SUCCESS) {
-		printf("Could not send packet: ");
-		if(err == TWI_ERROR_TIMEOUT) {
-			printf("TWI_ERROR_TIMEOUT\n");
-			} else if(err == TWI_INVALID_ARGUMENT) {
-			printf("TWI_INVALID_ARGUMENT\n");
-			} else if(err == TWI_RECEIVE_NACK) {
-			printf("TWI_RECEIVE_NACK\n");
-			} else if(err == TWI_TIMEOUT) {
-			printf("TWI_TIMEOUT\n");
-			} else {
-			printf("UNKNOWN\n");
-		}
-		return 0;
-	}
-	return 1;
-}
-
-uint32_t receivePacket(uint8_t address, void* data, uint32_t size) {
-	twi_package_t packet_read = {
-		.addr         = {address},      // TWI slave memory address data
-		.addr_length  = sizeof (uint8_t),    // TWI slave memory address data size
-		.chip         = MPU6050_I2C_ADDRESS,      // TWI slave bus address
-		.buffer       = data,        // transfer data destination buffer
-		.length       = size                    // transfer data size (bytes)
-	};
-	
-	
-	uint32_t err;
-	if ((err = twi_master_read(TWI1, &packet_read)) != TWI_SUCCESS) {
-		printf("Could not receive packet: ");
-		if(err == TWI_ERROR_TIMEOUT) {
-			printf("TWI_ERROR_TIMEOUT\n");
-			} else if(err == TWI_INVALID_ARGUMENT) {
-			printf("TWI_INVALID_ARGUMENT\n");
-			} else if(err == TWI_RECEIVE_NACK) {
-			printf("TWI_RECEIVE_NACK\n");
-			} else if(err == TWI_TIMEOUT) {
-			printf("TWI_TIMEOUT\n");
-			} else {
-			printf("UNKNOWN\n");
-		}
-		return 0;
-	}
-	return size;
-}
-
-
-void openI2C(void) {
-	//twi_options_t opt;
-	//opt.master_clk = sysclk_get_peripheral_hz();
-	//opt.speed      = TWI_CLK;
-	twi_master_options_t opt = {
-		.speed = TWI_CLK,
-		.chip  = MPU6050_I2C_ADDRESS
-	};
-	twi_enable_master_mode(TWI1);
-	if (twi_master_setup(TWI1, &opt) != TWI_SUCCESS) {
-		printf("Could not initialize i2c.\n");
-		return;
-	}
-	
-	if (twi_probe(TWI1, MPU6050_I2C_ADDRESS) != TWI_SUCCESS) {
-		printf("I2C Probe failed.\n");
-	} else {
-		printf("I2C Probe ok.\n");
-	}
-	
-	uint8_t whoami;
-	if(receivePacket(MPU6050_WHO_AM_I, &whoami, 1) > 0) {
-		printf("Who Am I succeeded: %d\n", whoami);
-	} else {
-		printf("Who Am I failed.\n");
-	}
-}
 
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	uint8_t data[12]; // data array to hold accelerometer and gyro x, y, z, data
@@ -100,47 +14,47 @@ void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	int32_t gyro_bias[3] = {0, 0, 0}, accel_bias[3] = {0, 0, 0};
 	
 	// reset device, reset all registers, clear gyro and accelerometer bias registers
-	sendPacket(MPU6050_PWR_MGMT_1, 0x80, 1); // Write a one to bit 7 reset bit; toggle reset device
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_1, 0x80, 1); // Write a one to bit 7 reset bit; toggle reset device
 	delay_ms(100);
 	
 	// get stable time source
 	// Set clock source to be PLL with x-axis gyroscope reference, bits 2:0 = 001
-	sendPacket(MPU6050_PWR_MGMT_1, 0x01, 1);
-	sendPacket(MPU6050_PWR_MGMT_2, 0x00, 1);
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_1, 0x01, 1);
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_2, 0x00, 1);
 	delay_ms(200);
 	
 	// Configure device for bias calculation
-	sendPacket(MPU6050_INT_ENABLE, 0x00, 1);   // Disable all interrupts
-	sendPacket(MPU6050_FIFO_EN, 0x00, 1);      // Disable FIFO
-	//sendPacket(MPU6050_PWR_MGMT_1, 0x00);   // Turn on internal clock source
-	sendPacket(MPU6050_I2C_MST_CTRL, 0x00, 1); // Disable I2C master
-	sendPacket(MPU6050_USER_CTRL, 0x00, 1);    // Disable FIFO and I2C master modes
-	sendPacket(MPU6050_USER_CTRL, 0x0C, 1);    // Reset FIFO and DMP
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_INT_ENABLE, 0x00, 1);   // Disable all interrupts
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_FIFO_EN, 0x00, 1);      // Disable FIFO
+	//sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_1, 0x00);   // Turn on internal clock source
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_I2C_MST_CTRL, 0x00, 1); // Disable I2C master
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_USER_CTRL, 0x00, 1);    // Disable FIFO and I2C master modes
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_USER_CTRL, 0x0C, 1);    // Reset FIFO and DMP
 	delay_ms(15);
 	
 	// Configure MPU6050 gyro and accelerometer for bias calculation
-	sendPacket(MPU6050_CONFIG, 0x01, 1);      // Set low-pass filter to 188 Hz
-	sendPacket(MPU6050_SMPLRT_DIV, 0x00, 1);  // Set sample rate to 1 kHz
-	sendPacket(MPU6050_GYRO_CONFIG, 0x00, 1);  // Set gyro full-scale to 250 degrees per second, maximum sensitivity
-	sendPacket(MPU6050_ACCEL_CONFIG, 0x00, 1); // Set accelerometer full-scale to 2 g, maximum sensitivity
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_CONFIG, 0x01, 1);      // Set low-pass filter to 188 Hz
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_SMPLRT_DIV, 0x00, 1);  // Set sample rate to 1 kHz
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_GYRO_CONFIG, 0x00, 1);  // Set gyro full-scale to 250 degrees per second, maximum sensitivity
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_ACCEL_CONFIG, 0x00, 1); // Set accelerometer full-scale to 2 g, maximum sensitivity
 	
 	//uint16_t  gyrosensitivity  = 131;   // = 131 LSB/degrees/sec
 	uint16_t  accelsensitivity = 16384;  // = 16384 LSB/g
 
 	// Configure FIFO to capture accelerometer and gyro data for bias calculation
-	sendPacket(MPU6050_USER_CTRL, 0x40, 1);   // Enable FIFO
-	sendPacket(MPU6050_FIFO_EN, 0x78, 1);     // Enable gyro and accelerometer sensors for FIFO  (max size 1024 bytes in MPU-6050)
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_USER_CTRL, 0x40, 1);   // Enable FIFO
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_FIFO_EN, 0x78, 1);     // Enable gyro and accelerometer sensors for FIFO  (max size 1024 bytes in MPU-6050)
 	delay_ms(80); // accumulate 80 samples in 80 milliseconds = 960 bytes
 
 	// At end of sample accumulation, turn off FIFO sensor read
-	sendPacket(MPU6050_FIFO_EN, 0x00, 1);        // Disable gyro and accelerometer sensors for FIFO
-	receivePacket(MPU6050_FIFO_COUNTH, &data[0], 2); // read FIFO sample count
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_FIFO_EN, 0x00, 1);        // Disable gyro and accelerometer sensors for FIFO
+	receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_FIFO_COUNTH, &data[0], 2); // read FIFO sample count
 	fifo_count = ((uint16_t)data[0] << 8) | data[1];
 	packet_count = fifo_count/12;// How many sets of full gyro and accelerometer data for averaging
 
 	for (ii = 0; ii < packet_count; ii++) {
 		int16_t accel_temp[3] = {0, 0, 0}, gyro_temp[3] = {0, 0, 0};
-		receivePacket(MPU6050_FIFO_R_W, &data[0], 12); // read data for averaging
+		receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_FIFO_R_W, &data[0], 12); // read data for averaging
 		accel_temp[0] = (int16_t) (((int16_t)data[0] << 8) | data[1]  ) ;  // Form signed 16-bit integer for each sample in FIFO
 		accel_temp[1] = (int16_t) (((int16_t)data[2] << 8) | data[3]  ) ;
 		accel_temp[2] = (int16_t) (((int16_t)data[4] << 8) | data[5]  ) ;
@@ -193,11 +107,11 @@ void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	// the accelerometer biases calculated above must be divided by 8.
 
 	int32_t accel_bias_reg[3] = {0, 0, 0}; // A place to hold the factory accelerometer trim biases
-	receivePacket(MPU6050_XA_OFFSET_H, &data[0], 2); // Read factory accelerometer trim values
+	receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_XA_OFFSET_H, &data[0], 2); // Read factory accelerometer trim values
 	accel_bias_reg[0] = (int16_t) ((int16_t)data[0] << 8) | data[1];
-	receivePacket(MPU6050_YA_OFFSET_H, &data[0], 2);
+	receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_YA_OFFSET_H, &data[0], 2);
 	accel_bias_reg[1] = (int16_t) ((int16_t)data[0] << 8) | data[1];
-	receivePacket(MPU6050_ZA_OFFSET_H, &data[0], 2);
+	receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_ZA_OFFSET_H, &data[0], 2);
 	accel_bias_reg[2] = (int16_t) ((int16_t)data[0] << 8) | data[1];
 	
 	uint32_t mask = 1uL; // Define mask for temperature compensation bit 0 of lower byte of accelerometer bias registers
@@ -241,10 +155,10 @@ void selfTest(float* destination) {
 	uint8_t selfTest[6];
 	float factoryTrim[6];
 	
-	sendPacket(MPU6050_ACCEL_CONFIG, 0xF0, 1);
-	sendPacket(MPU6050_GYRO_CONFIG, 0xE0, 1);
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_ACCEL_CONFIG, 0xF0, 1);
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_GYRO_CONFIG, 0xE0, 1);
 	
-	receivePacket(MPU6050_SELF_TEST_X, &rawData, 4);
+	receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_SELF_TEST_X, &rawData, 4);
 	
 	selfTest[0] = (rawData[0] >> 3) | (rawData[3] & 0x30) >> 4 ; // XA_TEST result is a five-bit unsigned integer
 	selfTest[1] = (rawData[1] >> 3) | (rawData[3] & 0x0C) >> 4 ; // YA_TEST result is a five-bit unsigned integer
@@ -275,12 +189,13 @@ void selfTest(float* destination) {
 	  }
 }
 
-void setupSensor(void) {
+void setupSensor(Twi* interface) {
 	printf("Sensor Setup...\n");
+	sensor_interface = interface;
 	delay_ms(200);
-    openI2C();	
+    openI2CServer(sensor_interface, TWI_CLK, MPU6050_I2C_ADDRESS);	
 	printf("I2C Opened\n");
-	sendPacket(MPU6050_PWR_MGMT_1, 0x80, 1); // Write a one to bit 7 reset bit; toggle reset device
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_1, 0x80, 1); // Write a one to bit 7 reset bit; toggle reset device
 	printf("Device Reset\n");
 	selfTest(SelfTest);
 	
@@ -295,26 +210,26 @@ void setupSensor(void) {
 	
 	
 	//Wake up MPU6050 and select gyro x clock
-	sendPacket(MPU6050_PWR_MGMT_1, bit(MPU6050_CLKSEL_1), 1);
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_1, bit(MPU6050_CLKSEL_1), 1);
 	
     //Enable FIFO
-	//sendPacket(MPU6050_FIFO_EN, bit(MPU6050_XG_FIFO_EN) | bit(MPU6050_YG_FIFO_EN) | bit(MPU6050_ZG_FIFO_EN) | bit(MPU6050_ACCEL_FIFO_EN), 1);
+	//sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_FIFO_EN, bit(MPU6050_XG_FIFO_EN) | bit(MPU6050_YG_FIFO_EN) | bit(MPU6050_ZG_FIFO_EN) | bit(MPU6050_ACCEL_FIFO_EN), 1);
 
     //Enable FIFO Interrupt
-	//sendPacket(MPU6050_INT_ENABLE, MPU6050_FIFO_OFLOW_EN, 1);
+	//sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_INT_ENABLE, MPU6050_FIFO_OFLOW_EN, 1);
 	
-	sendPacket(MPU6050_INT_ENABLE, bit(MPU6050_DATA_RDY_EN), 1);
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_INT_ENABLE, bit(MPU6050_DATA_RDY_EN), 1);
 	
 
     //Set interrupt mode (active low, open drain, keep low until clear, read on every clear)
-	sendPacket(MPU6050_INT_PIN_CFG, bit(MPU6050_INT_LEVEL) | bit(MPU6050_INT_OPEN) | bit(MPU6050_INT_RD_CLEAR), 1);
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_INT_PIN_CFG, bit(MPU6050_INT_LEVEL) | bit(MPU6050_INT_OPEN) | bit(MPU6050_INT_RD_CLEAR), 1);
 	//uint8_t result;
-	//receivePacket(MPU6050_INT_PIN_CFG, &result, 1);
+	//receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_INT_PIN_CFG, &result, 1);
 	//printf("\nPin CFG register status: %#02x\n", result);
-	//sendPacket(MPU6050_INT_PIN_CFG,0, 1);
+	//sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_INT_PIN_CFG,0, 1);
 	
     //Set Digital low pass filter
-	sendPacket(MPU6050_CONFIG, bit(MPU6050_DLPF_CFG2) | bit(MPU6050_DLPF_CFG1), 1);
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_CONFIG, bit(MPU6050_DLPF_CFG2) | bit(MPU6050_DLPF_CFG1), 1);
 	
     orientation_t orient = {
 		.ax = 0,
@@ -343,7 +258,7 @@ void setupSensor(void) {
 uint8_t getSensorData(accel_t_gyro_union* accel_t_gyro) {
 	//printf("Receiving Sensor Data.\n");
 	
-	if(!receivePacket(MPU6050_ACCEL_XOUT_H, (void*)(accel_t_gyro), 14)) {
+	if(!receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_ACCEL_XOUT_H, (void*)(accel_t_gyro), 14)) {
 		return 1;
 	}
 	
@@ -484,7 +399,7 @@ uint8_t updateOrientation(void) {
 uint32_t getFifoSensorData(accel_gyro_union* accel_gyro, uint32_t max_count) {
 	
 	uint16_t count;
-	if(!receivePacket(MPU6050_FIFO_COUNTH, (void*)(&count), 2)) {
+	if(!receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_FIFO_COUNTH, (void*)(&count), 2)) {
 		printf("Could not receive FIFO count or 0.\n");
 		return 0;
 	}
@@ -502,7 +417,7 @@ uint32_t getFifoSensorData(accel_gyro_union* accel_gyro, uint32_t max_count) {
 		return 0;
 	}
 	
-	if(!receivePacket(MPU6050_FIFO_R_W, (void*)(accel_gyro), count)) {
+	if(!receivePacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_FIFO_R_W, (void*)(accel_gyro), count)) {
 		printf("Could not receive FIFO data.\n");
 		return 0;
 	}

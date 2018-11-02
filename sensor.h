@@ -23,6 +23,8 @@
 
 #define bit(b) (1UL << (b))
 
+Twi* sensor_interface;
+
 int16_t gyroBias[3], accelBias[3]; // Bias corrections for gyro and accelerometer
 float SelfTest[6];               // Gyro and accelerometer self-test sensor output
 
@@ -45,12 +47,9 @@ typedef struct position{
 orientation_t current_orientation;
 position_t current_position;
 
-uint8_t sendPacket(uint8_t address, uint8_t data, int length);
-uint32_t receivePacket(uint8_t address, void* data, uint32_t size);
-void openI2C(void);
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias);
 void selfTest(float* destination);
-void setupSensor(void);
+void setupSensor(Twi* interface);
 uint8_t getSensorData(accel_t_gyro_union* accel_t_gyro);
 void getOrientation(orientation_t* orientation);
 void getPosition(position_t* position);

@@ -128,6 +128,7 @@ void TWI0_Handler(void) {
 
 	if (receiver_state_twi0.receiving == 0 && 
 	((status & TWI_SR_SVACC) == TWI_SR_SVACC)) {
+		NVIC_DisableIRQ(PIOB_IRQn);
 		TWI_DisableIt(TWI0, TWI_IDR_SVACC);
 		TWI_EnableIt(TWI0, TWI_IER_RXRDY | TWI_IER_GACC
 		| TWI_IER_NACK | TWI_IER_EOSACC | TWI_IER_SCL_WS | TWI_IER_TXCOMP);
@@ -169,6 +170,7 @@ void TWI0_Handler(void) {
 		if (receiver_state_twi0.receiving == 1) {
 			(*twi0_data_received_callback)(receiver_state_twi0.buffer, receiver_state_twi0.current_size);
 		}
+		NVIC_EnableIRQ(PIOB_IRQn);
 
 		// Transfer completed
 		TWI_EnableIt(TWI0, TWI_IER_SVACC);

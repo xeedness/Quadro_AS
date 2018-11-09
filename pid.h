@@ -6,13 +6,15 @@
  */ 
 
 
+
 #ifndef PID_H_
 #define PID_H_
+
+#include <asf.h>
 
 #define SAMPLE_RATE 50
 //#define HISTORY_SECONDS 10
 //#define HISTORY_SIZE SAMPLE_RATE*HISTORY_SECONDS
-#define SAMPLE_TIME 1.0f/50.0f
 #define K_P 1
 
 //float angles_x[HISTORY_SIZE];
@@ -26,6 +28,8 @@ float i_value_x;
 float i_value_y;
 
 float target_x, target_y;
+
+uint32_t last_angle_tick;
 
 void init_pid(void);
 void set_constants(float p_k, float i_k, float d_k);

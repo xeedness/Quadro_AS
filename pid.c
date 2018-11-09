@@ -6,11 +6,13 @@
  */ 
 
 #include "pid.h"
+#include "controller.h"
  void init_pid() {
 	 pid_value_x = pid_value_y = 0;
 	 target_x = target_y = 0;
 	 i_value_x = i_value_y = 0;
 	 last_error_x = last_error_y = 0;
+	 last_angle_tick = ticks;
  }
  
  void set_constants(float p_k, float i_k, float d_k) {
@@ -28,6 +30,12 @@
 	 float error_x, p_value_x, d_value_x;
 	 float error_y, p_value_y, d_value_y;
 	 
+	 float elapsed_time = elapsed_time_s(last_angle_tick);
+	 last_angle_tick = ticks;
+	 if(elapsed_time > 1.0f) {
+		 elapsed_time = 1.0f;
+	 }
+	 
 	 //Calc error
 	 error_x = angleX-target_x;
 	 error_y = angleY-target_y; 
@@ -37,12 +45,12 @@
 	 p_value_y = error_y;
 	 
 	 // I Value is the discrete integral (sum) of the product of error and time
-	 i_value_x += SAMPLE_TIME * error_x;
-	 i_value_y += SAMPLE_TIME * error_y;	 
+	 i_value_x += elapsed_time * error_x;
+	 i_value_y += elapsed_time * error_y;	 
 	 
 	 // D Value is the change of error
-	 d_value_x = (error_x-last_error_x)/SAMPLE_TIME;
-	 d_value_y = (error_y-last_error_y)/SAMPLE_TIME;
+	 d_value_x = (error_x-last_error_x)/elapsed_time;
+	 d_value_y = (error_y-last_error_y)/elapsed_time;
 	 
 	 // Generate pid value by weighted sum
 	 pid_value_x = k1*p_value_x+k2*i_value_x+k3*d_value_x;

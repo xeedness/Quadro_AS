@@ -18,16 +18,18 @@ void setup_controller(Twi* interface) {
 	last_measure = 0;
 	last_control_ticks = 0;
 	address = 6;
+	valid = 0;
+	invalid = 0;
 }
 
 void on_receive(uint8_t* buffer, uint16_t count) {
-	printf("Received a count of %d\n", count);
+	//printf("Received a count of %d\n", count);
 	if(count > 0) {
-		printf("Received: '");
-		for(uint32_t i=0; i<count;i++) {
-			printf("%d ", buffer[i]);
-		}
-		printf("'\n");
+		//printf("Received: '");
+		//for(uint32_t i=0; i<count;i++) {
+			//printf("%d ", buffer[i]);
+		//}
+		//printf("'\n");
 		
 		int16_t values[6];
 		for(int i=0;i<6 && (i+1)*2 < count;i++) {
@@ -37,41 +39,43 @@ void on_receive(uint8_t* buffer, uint16_t count) {
 			float ay = (float)(values[0])/MAX_VALUE;
 			float ax = (float)(values[1])/MAX_VALUE;
 			float th = (float)(values[2])/MAX_VALUE;
-			printf("Decoded Control: %d %d %d\n", (int)(ax*100), (int)(ay*100), (int)(th*100));
+			//printf("Decoded Control: %d %d %d\n", (int)(ax*100), (int)(ay*100), (int)(th*100));
 			//Always apply target angles
-			set_target(ax,ay);
+			set_target(ax*50,ay*50);
 			handleThrust(th);
 		} else if(buffer[0] == 1 && count == 7) {
-			float p = (float)(values[0])/MAX_VALUE;
-			float i = (float)(values[1])/MAX_VALUE;
-			float d = (float)(values[2])/MAX_VALUE;
+			float p = ((float)(values[0])/MAX_VALUE)*10.0f;
+			float i = ((float)(values[1])/MAX_VALUE)*10.0f;
+			float d = ((float)(values[2])/MAX_VALUE)*10.0f;
 			printf("Decoded PID: %d %d %d\n", (int)(p*1000), (int)(i*1000), (int)(d*1000));
 			set_constants(p,i,d);
 		} else if(buffer[0] == 2 && count == 7) {
 			printf("Decoded Motor: %d %d %d\n", values[0], values[1], values[2]);
 			adjustMotorValues(values[0], values[1], values[2]);
 		} else if(buffer[0] == 3 && count == 13) {
-			float p = (float)(values[0])/MAX_VALUE;
-			float i = (float)(values[1])/MAX_VALUE;
-			float d = (float)(values[2])/MAX_VALUE;
-			printf("Decoded PID: %d %d %d\n", (int)(p*1000), (int)(i*1000), (int)(d*1000));
-			printf("Decoded Motor: %d %d %d\n", values[3], values[4], values[5]);
+			float p = ((float)(values[0])/MAX_VALUE)*10.0f;
+			float i = ((float)(values[1])/MAX_VALUE)*10.0f;
+			float d = ((float)(values[2])/MAX_VALUE)*10.0f;
+			//printf("Decoded PID: %d %d %d\n", (int)(p*1000), (int)(i*1000), (int)(d*1000));
+			//printf("Decoded Motor: %d %d %d\n", values[3], values[4], values[5]);
 			set_constants(p,i,d);
 			adjustMotorValues(values[3], values[4], values[5]);
 		} else if(buffer[0] == 10 && count == 1) {
-			printf("Start received.\n");
+			//printf("Start received.\n");
 			handleStart();
 		} else if(buffer[0] == 11 && count == 1) {
-			printf("Landing received.\n");
+			//printf("Landing received.\n");
 			handleLanding();
 		} else if(buffer[0] == 12 && count == 1) {
-			printf("Shutdown received.\n");
+			//printf("Shutdown received.\n");
 			handleShutdown();
 		} else {
-			printf("Could not decode message.\n");
+			//printf("Could not decode message.\n");
+			invalid++;
 			return;
 		}
 		last_control_ticks = ticks;
+		valid++;
 	}
 }
 
@@ -99,17 +103,37 @@ void handleShutdown(void) {
 
 
 void handleThrust(float th) {
-	if(state == RUN_STATE || state == LANDING_STATE) {
+	if(state == RUN_STATE) {
 		int maxIncrease = MaxSpeed - HoverSpeed;
-		int maxDecrease = HoverSpeed - ESC_LOW;
+		int maxDecrease = HoverSpeed - MinSpeed;
 		if(th > 0) {
 			BaseSpeed = HoverSpeed + (maxIncrease * th);
 		} else {
 			//th < 0, maxDecrease > 0 -> decrease
 			BaseSpeed = HoverSpeed + (maxDecrease * th);
 		}
-		printf("New BaseSpeed: %d\n", BaseSpeed);
-	} else {
-		printf("Ignored Thrust\n");
+		//printf("New BaseSpeed: %d\n", BaseSpeed);
+	} else if (state == LANDING_STATE) {
+		int maxIncrease = MaxSpeed - CurrentLandingSpeed;
+		int maxDecrease = CurrentLandingSpeed - MinSpeed;
+		if(th > 0) {
+			BaseSpeed = CurrentLandingSpeed + (maxIncrease * th);
+			} else {
+			//th < 0, maxDecrease > 0 -> decrease
+			BaseSpeed = CurrentLandingSpeed + (maxDecrease * th);
+		}
 	}
+}
+
+
+uint32_t elapsed_time_us(uint32_t past) {
+	return (ticks-past)*1000;
+}
+
+uint32_t elapsed_time_ms(uint32_t past) {
+	return (ticks-past);
+}
+
+float elapsed_time_s(uint32_t past) {
+	return (float)(ticks-past)/1000.0f;
 }

@@ -6,6 +6,7 @@
  */ 
 #include "sensor.h"
 #include "i2c.h"
+#include "controller.h"
 #include <math.h>
 
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
@@ -34,7 +35,7 @@ void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	
 	// Configure MPU6050 gyro and accelerometer for bias calculation
 	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_CONFIG, 0x01, 1);      // Set low-pass filter to 188 Hz
-	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_SMPLRT_DIV, 0x00, 1);  // Set sample rate to 1 kHz
+	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_SMPLRT_DIV, 0x03, 1);  // Set sample rate to 1 kHz
 	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_GYRO_CONFIG, 0x00, 1);  // Set gyro full-scale to 250 degrees per second, maximum sensitivity
 	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_ACCEL_CONFIG, 0x00, 1); // Set accelerometer full-scale to 2 g, maximum sensitivity
 	
@@ -244,7 +245,7 @@ void setupSensor(Twi* interface) {
 		.z = 0
 	};
 	current_position = position;
-	
+	last_sensor_tick = ticks;
 	gyroSumX = gyroSumY = gyroSumZ = 0;
 	accelSumX = accelSumY =	accelSumZ = 0;
 	sumCounter = 0;
@@ -323,9 +324,23 @@ uint8_t updateOrientation(void) {
 		dGyroOrientation.ay = (float)(gyroSumY)/(DGS_250);
 		dGyroOrientation.az = (float)(gyroSumZ)/(DGS_250);
 		
-		gyroOrientation.ax = current_orientation.ax + dGyroOrientation.ax/(1000.0f);
-		gyroOrientation.ay = current_orientation.ay + dGyroOrientation.ay/(1000.0f);
-		gyroOrientation.az = current_orientation.az + dGyroOrientation.az/(1000.0f);
+		float elapsed_time = elapsed_time_s(last_sensor_tick);
+		last_sensor_tick = ticks;
+		gyroOrientation.ax = current_orientation.ax + dGyroOrientation.ax*elapsed_time/(sumCounter);
+		gyroOrientation.ay = current_orientation.ay + dGyroOrientation.ay*elapsed_time/(sumCounter);
+		gyroOrientation.az = current_orientation.az + dGyroOrientation.az*elapsed_time/(sumCounter);
+		
+		gyroSumX = 0;
+		gyroSumY = 0;
+		gyroSumZ = 0;
+		accelSumX = 0;
+		accelSumY = 0;
+		accelSumZ = 0;
+		sumCounter = 0;
+		
+		if(elapsed_time > 0.1f) {
+			return 1;
+		}
 	
 		float length, x,y,z, xy, zy, yx, zx;
 		x = (float)accel_t_gyro.value.x_accel;
@@ -383,13 +398,6 @@ uint8_t updateOrientation(void) {
 			//printf("New Orientation: %d, %d, %d\n", (int) current_orientation.ax, (int) current_orientation.ay, (int) current_orientation.az);
 			//printf("AccelerationSum: %d, %d, %d\n", (int) accelSumX, (int) accelSumY, (int) accelSumZ);
 		}
-		gyroSumX = 0;
-		gyroSumY = 0;
-		gyroSumZ = 0;
-		accelSumX = 0;
-		accelSumY = 0;
-		accelSumZ = 0;
-		sumCounter = 0;
 	}
 	
 	

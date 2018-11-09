@@ -45,6 +45,9 @@
 
 uint8_t sensor_data_ready = 0;
 uint32_t last_state_run_ticks = 0;
+uint32_t log_begin_ticks = 0;
+uint32_t last_second_tick = 0;
+
 
 uint32_t state_timer_us;
 uint32_t state_time_interval_ms;
@@ -54,9 +57,9 @@ uint16_t front_right_speed;
 uint16_t rear_left_speed;
 uint16_t rear_right_speed;
 
-const float P_FACT = 0.4f;
-const float I_FACT = 0.001f;
-const float D_FACT = 0.0001f;
+const float P_FACT = 0.1f;
+const float I_FACT = 0.01f;
+const float D_FACT = 0.01f;
 
 void updateSpeed(void);
 void gotoState(int newState);
@@ -64,22 +67,15 @@ void delayState(uint32_t ms);
 void printSensorData(void);
 void onDataReady(uint32_t arg0, uint32_t arg1);
 void runControl(void);
+void runLog(void);
 void setup(void);
-uint32_t elapsed_time_us(uint32_t past);
-uint32_t elapsed_time_ms(uint32_t past);
-float elapsed_time_s(uint32_t past);
 
-uint32_t elapsed_time_us(uint32_t past) {
-	return (ticks-past)*100;
-}
 
-uint32_t elapsed_time_ms(uint32_t past) {
-	return (ticks-past)/10;
-}
-
-float elapsed_time_s(uint32_t past) {
-	return (float)(ticks-past)/100000.0;
-}
+float angleLogX[4000];
+float angleLogY[4000];
+float pidLogX[4000];
+float pidLogY[4000];
+uint16_t logSize = 0;
 
 int main (void) {
     setup();
@@ -92,7 +88,8 @@ int main (void) {
 #ifdef AXIS_TEST
     axisTest();
 #endif
-	runControl();
+	//runControl();
+	runLog();
 }  // end of main
 
 
@@ -102,7 +99,7 @@ void setup(void) {
 	board_init();
 	delay_init(sysclk_get_cpu_hz());
 	
-	if (SysTick_Config(sysclk_get_cpu_hz() / 10000)) {
+	if (SysTick_Config(sysclk_get_cpu_hz() / 1000)) {
 		while (true) {  /* no error must happen here, otherwise this board is dead */ }
 	}
 	
@@ -143,6 +140,7 @@ void setup(void) {
 	LandingSpeed = 1200;
 	HoverSpeed = 1350;
 	MaxSpeed = 1800;
+	MinSpeed = 1100;
 	
 	
 	printf("Interrupt Setup.\n");
@@ -196,6 +194,13 @@ void updateSpeed(void) {
 	rear_left_speed = min(rear_left_speed, MaxSpeed);
 	rear_right_speed = min(rear_right_speed, MaxSpeed);
 	
+	front_left_speed = max(front_left_speed, MinSpeed);
+	front_right_speed = max(front_right_speed, MinSpeed);
+	rear_left_speed = max(rear_left_speed, MinSpeed);
+	rear_right_speed = max(rear_right_speed, MinSpeed);
+	
+	
+	
 	REG_PWM_CDTYUPD0 = front_left_speed;
 	REG_PWM_CDTYUPD1 = front_right_speed;
 	REG_PWM_CDTYUPD2 = rear_right_speed;
@@ -211,7 +216,47 @@ void updateSpeed(void) {
 		//printf("Position: %d, %d, %d [cm]\n", (int)(position.x*100.0f), (int)(position.y*100.0f), (int)(position.z*100.0f));
 	}
 }
-
+uint8_t began = 0;
+void runLog(void) {
+	
+	last_second_tick = ticks;
+	while(1) {
+		if(sensor_data_ready) {
+			updateOrientation();
+			sensor_data_ready = 0;
+			if(began == 0) {
+				began = 1;	
+				log_begin_ticks = ticks;
+			}
+			
+		}
+		if(began && elapsed_time_ms(last_state_run_ticks) > 100) {
+			orientation_t orientation;
+			getOrientation(&orientation);
+			feed_angles(orientation.ax, orientation.ay);
+			float pid_x, pid_y;
+			pid_values(&pid_x, &pid_y);
+			angleLogX[logSize] = orientation.ax;
+			angleLogY[logSize] = orientation.ay;
+			pidLogX[logSize] = pid_x*PID_FACTOR/100.0f;
+			pidLogY[logSize] = pid_y*PID_FACTOR/100.0f;
+			logSize++,
+			last_state_run_ticks = ticks;
+		}
+		if(elapsed_time_s(last_second_tick) > 1) {
+			last_second_tick = ticks;
+			printf("Second...\n");
+		}
+		if(began && elapsed_time_s(log_begin_ticks) > 20) {
+			break;
+		}
+		delay_us(1);
+	}
+	printf("Logging %d values\n", logSize);
+	for(int i=0;i<logSize;i++) {
+		printf("%.4f;%.4f;%.4f;%.4f\n", angleLogX[i], angleLogY[i], pidLogX[i], pidLogY[i]);
+	}
+}
 
 void runControl(void) {
 	state = -1;
@@ -227,6 +272,10 @@ void runControl(void) {
 			switch(state) {
 			case(IDLE_STATE):
 				printf("Idle\n");
+				printf("Valid: %lu Invalid: %lu\n", valid, invalid);
+				orientation_t orientation;
+				getOrientation(&orientation);
+				printf("AngleX: %d AngleY: %d\n", (int16_t)orientation.ax, (int16_t)orientation.ay);
 				break;
 			case(RUN_STATE):
 				updateSpeed();
@@ -239,6 +288,10 @@ void runControl(void) {
 				{
 					BaseSpeed--;
 				}
+				if(CurrentLandingSpeed > LandingSpeed)
+				{
+					CurrentLandingSpeed--;
+				}				
 				updateSpeed();
 				if(state_timer_us >= LANDING_TIME*100) {
 					next_state = SHUTDOWN_STATE;
@@ -267,6 +320,7 @@ void runControl(void) {
 				case(LANDING_STATE):
 					printf("Landing...");
 					state_time_interval_ms = 20;
+					CurrentLandingSpeed = HoverSpeed;
 					break;
 				case(SHUTDOWN_STATE):
 					printf("Stopping...");
@@ -279,7 +333,7 @@ void runControl(void) {
 			last_state_run_ticks = ticks;
 		}
 		// Increase time, when no state change occurred
-		delay_us(100);
+		delay_us(1);
 	}
 }
 

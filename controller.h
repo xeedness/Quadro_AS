@@ -24,6 +24,8 @@
 #define PID_FACTOR 0.5f
 int state;
 int next_state;
+uint32_t valid;
+uint32_t invalid;
 
 volatile uint32_t last_control_ticks;
 volatile uint32_t ticks; //1 tick == 10 us
@@ -35,7 +37,9 @@ Twi* controller_interface;
 uint16_t LandingSpeed;
 uint16_t HoverSpeed;
 uint16_t MaxSpeed;
+uint16_t MinSpeed;
 uint16_t CurrentSpeed;
+uint16_t CurrentLandingSpeed;
 uint16_t BaseSpeed;
 
 void setup_controller(Twi* interface);
@@ -45,6 +49,11 @@ void handleThrust(float th);
 void handleStart(void);
 void handleLanding(void);
 void handleShutdown(void);
+
+uint32_t elapsed_time_us(uint32_t past);
+uint32_t elapsed_time_ms(uint32_t past);
+float elapsed_time_s(uint32_t past);
+
 
 
 #endif /* CONTROLLER_H_ */

@@ -46,6 +46,7 @@ typedef struct position{
 
 orientation_t current_orientation;
 position_t current_position;
+uint32_t last_sensor_tick;
 
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias);
 void selfTest(float* destination);

@@ -35,6 +35,7 @@
 	 if(elapsed_time > 1.0f) {
 		 elapsed_time = 1.0f;
 	 }
+	 //printf("Elapsed Time: %.5f\n", elapsed_time);
 	 
 	 //Calc error
 	 error_x = angleX-target_x;

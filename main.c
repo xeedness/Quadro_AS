@@ -57,7 +57,7 @@ uint16_t front_right_speed;
 uint16_t rear_left_speed;
 uint16_t rear_right_speed;
 
-const float P_FACT = 0.1f;
+const float P_FACT = 0.3f;
 const float I_FACT = 0.01f;
 const float D_FACT = 0.01f;
 
@@ -68,6 +68,7 @@ void printSensorData(void);
 void onDataReady(uint32_t arg0, uint32_t arg1);
 void runControl(void);
 void runLog(void);
+void runConsole(void);
 void setup(void);
 
 
@@ -88,8 +89,9 @@ int main (void) {
 #ifdef AXIS_TEST
     axisTest();
 #endif
-	//runControl();
-	runLog();
+	runControl();
+	//runLog();
+	//runConsole();
 }  // end of main
 
 
@@ -177,9 +179,6 @@ void gotoState(int newState) {
 
 int outputCounter = 0;
 void updateSpeed(void) {
-	orientation_t orientation;
-	getOrientation(&orientation);
-	feed_angles(orientation.ax, orientation.ay);
 	float pid_x, pid_y;
 	pid_values(&pid_x, &pid_y);
 	
@@ -206,23 +205,27 @@ void updateSpeed(void) {
 	REG_PWM_CDTYUPD2 = rear_right_speed;
 	REG_PWM_CDTYUPD3 = rear_left_speed;
 	
-	if(++outputCounter > 10) {
-		outputCounter = 0;
-		printf("PID Values: %d, %d\n", (int)pid_x, (int)pid_y);
-		printf("Motor Values:\n");
-		printf("%d %d\n%d %d\n", front_left_speed, front_right_speed, rear_left_speed, rear_right_speed);
+	//if(++outputCounter > 10) {
+		//outputCounter = 0;
+		//printf("PID Values: %d, %d\n", (int)pid_x, (int)pid_y);
+		//printf("Motor Values:\n");
+		//printf("%d %d\n%d %d\n", front_left_speed, front_right_speed, rear_left_speed, rear_right_speed);
+		
 		//position_t position;
 		//getPosition(&position);
 		//printf("Position: %d, %d, %d [cm]\n", (int)(position.x*100.0f), (int)(position.y*100.0f), (int)(position.z*100.0f));
-	}
+	//}
 }
 uint8_t began = 0;
+uint16_t samples = 0;
+
 void runLog(void) {
-	
+	BaseSpeed = HoverSpeed;
 	last_second_tick = ticks;
 	while(1) {
 		if(sensor_data_ready) {
 			updateOrientation();
+			samples++;
 			sensor_data_ready = 0;
 			if(began == 0) {
 				began = 1;	
@@ -234,6 +237,8 @@ void runLog(void) {
 			orientation_t orientation;
 			getOrientation(&orientation);
 			feed_angles(orientation.ax, orientation.ay);
+			updateSpeed();
+			printf("%d %d\n%d %d\n", front_left_speed, front_right_speed, rear_left_speed, rear_right_speed);
 			float pid_x, pid_y;
 			pid_values(&pid_x, &pid_y);
 			angleLogX[logSize] = orientation.ax;
@@ -246,6 +251,8 @@ void runLog(void) {
 		if(elapsed_time_s(last_second_tick) > 1) {
 			last_second_tick = ticks;
 			printf("Second...\n");
+			printf("Samples: %d\n", samples);
+			samples = 0;
 		}
 		if(began && elapsed_time_s(log_begin_ticks) > 20) {
 			break;
@@ -271,18 +278,25 @@ void runControl(void) {
 			//Process current state
 			switch(state) {
 			case(IDLE_STATE):
-				printf("Idle\n");
-				printf("Valid: %lu Invalid: %lu\n", valid, invalid);
-				orientation_t orientation;
-				getOrientation(&orientation);
-				printf("AngleX: %d AngleY: %d\n", (int16_t)orientation.ax, (int16_t)orientation.ay);
-				break;
-			case(RUN_STATE):
-				updateSpeed();
-				if(elapsed_time_s(last_control_ticks) > 10) {
-					next_state = LANDING_STATE;
+				{
+					printf("Idle\n");
+					printf("Valid: %lu Invalid: %lu\n", valid, invalid);
+					orientation_t orientation;
+					getOrientation(&orientation);
+					printf("AngleX: %d AngleY: %d\n", (int16_t)orientation.ax, (int16_t)orientation.ay);
+					break;
 				}
-				break;
+			case(RUN_STATE):
+				{
+					orientation_t orientation;
+					getOrientation(&orientation);
+					feed_angles(orientation.ax, orientation.ay);
+					updateSpeed();
+					if(elapsed_time_s(last_control_ticks) > 20) {
+						next_state = LANDING_STATE;
+					}
+					break;
+				}
 			case(LANDING_STATE):
 				if(BaseSpeed > LandingSpeed)
 				{
@@ -291,7 +305,10 @@ void runControl(void) {
 				if(CurrentLandingSpeed > LandingSpeed)
 				{
 					CurrentLandingSpeed--;
-				}				
+				}
+				orientation_t orientation;
+				getOrientation(&orientation);
+				feed_angles(orientation.ax, orientation.ay);				
 				updateSpeed();
 				if(state_timer_us >= LANDING_TIME*100) {
 					next_state = SHUTDOWN_STATE;
@@ -314,12 +331,12 @@ void runControl(void) {
 					break;
 				case(RUN_STATE):
 					printf("Running...");
-					state_time_interval_ms = 20;
+					state_time_interval_ms = 80;
 					BaseSpeed = HoverSpeed;
 					break;
 				case(LANDING_STATE):
 					printf("Landing...");
-					state_time_interval_ms = 20;
+					state_time_interval_ms = 80;
 					CurrentLandingSpeed = HoverSpeed;
 					break;
 				case(SHUTDOWN_STATE):
@@ -363,10 +380,10 @@ void onDataReady(uint32_t arg0, uint32_t arg1) {
 
 
 
-/*
-int Step = 50;
 
-void run(void) {
+int Step = 100;
+
+void runConsole(void) {
     minThrottle();
     printf("Running ESC\n");
     printf("Step = %d\n", Step);
@@ -442,4 +459,4 @@ void run(void) {
         REG_PWM_CDTYUPD0 = REG_PWM_CDTYUPD1 = REG_PWM_CDTYUPD2 = REG_PWM_CDTYUPD3 = CurrentSpeed;
 		delay_ms(100);
     }
-}*/
+}

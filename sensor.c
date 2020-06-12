@@ -312,7 +312,7 @@ uint8_t updateOrientation(void) {
 	}
 	
 	//Update orientation
-	if(++sumCounter < 1000/SAMPLES_PER_SECOND) {
+	if(++sumCounter < 250/SAMPLES_PER_SECOND) {
 		gyroSumX += accel_t_gyro.value.x_gyro;
 		gyroSumY += accel_t_gyro.value.y_gyro;
 		gyroSumZ += accel_t_gyro.value.z_gyro;

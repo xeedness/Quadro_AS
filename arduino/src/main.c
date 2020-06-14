@@ -36,6 +36,7 @@
 #include "sensor.h"
 #include "pid.h"
 #include "controller.h"
+#include "uart_bridge.h"
 
 
 
@@ -113,6 +114,9 @@ void setup(void) {
 	stdio_serial_init(CONF_UART, &uart_serial_options);
 	printf("Setup: Serial port communication at 9600bps\n");
 	
+	setup_uart_bridge();
+	printf("Setup: Uart Bridge\n");
+	
 	
 	
 	//Enable sensor interrupt
@@ -134,7 +138,7 @@ void setup(void) {
 
     
     setupSensor(TWI1);
-	setup_controller(TWI0);
+	//setup_controller(TWI0);
 	
 	set_constants(P_FACT,I_FACT,D_FACT);
 	set_target(0,0);
@@ -279,10 +283,13 @@ void runControl(void) {
 			switch(state) {
 			case(IDLE_STATE):
 				{
+					
 					printf("Idle\n");
 					printf("Valid: %lu Invalid: %lu\n", valid, invalid);
 					orientation_t orientation;
 					getOrientation(&orientation);
+					uart_bridge_send((uint8_t*)(&orientation.ax), 4);
+					uart_bridge_send((uint8_t*)(&orientation.ay), 4);
 					printf("AngleX: %d AngleY: %d\n", (int16_t)orientation.ax, (int16_t)orientation.ay);
 					break;
 				}

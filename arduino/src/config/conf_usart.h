@@ -10,6 +10,7 @@
 #define CONF_USART_H_
 
 #define CONF_UART            CONSOLE_UART
+#define CONF_UART_CONTROL	 USART0
 /** Baudrate setting */
 #define CONF_UART_BAUDRATE   115200
 /** Parity setting */

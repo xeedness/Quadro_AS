@@ -1,0 +1,52 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PyClientRecv",
+            "type": "python",
+            "request": "launch",
+            "program": "pyClientRecv.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "PyClient",
+            "type": "python",
+            "request": "launch",
+            "program": "pyClient.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "PyHost Default Host",
+            "type": "python",
+            "request": "launch",
+            "program": "pyHost.py",
+            "console": "integratedTerminal",
+            "args": ["--mode", "0", "--recordpath", "../data"]
+        },
+        {
+            "name": "PyHost Replay replay_sample.csv",
+            "type": "python",
+            "request": "launch",
+            "program": "pyHost.py",
+            "console": "integratedTerminal",
+            "args": ["--mode", "1", "--recordpath", "../data/replay_sample.csv"]
+        },
+        {
+            "name": "Python: Current File (Integrated Terminal)",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Current File (External Terminal)",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "externalTerminal"
+        }
+    ]
+}

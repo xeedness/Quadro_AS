@@ -1,46 +1,61 @@
-import socket
 import time
 import threading
+import tkinter as tk
+import base64
+import Receiver
+import Sender
+import Plot
+import PlotHandler
+import Recorder
+import argparse
+import Controller
 
 HOST = '192.168.2.116'
-PORT_TX = 12346
-PORT_RX = 12345    
-maxV = 32768
+PORT_TX = 12346        
+PORT_RX = 12345        
 
-
-def recv_thread_func():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        print("Accepting RX\n")
-        s.bind((HOST, PORT_RX))
-        s.listen()
-        conn, addr = s.accept()
-
-        print('RX Connected to ', addr)
-        while(1):
-            try:
-                print("Recv Block")
-                response = conn.recv(128)
-                value = response.decode("utf-8")
-                print("Received: "+value)
-            except:
-                print("Recv error "+response.hex())
-
-        print('Connection aborted.')
-           
 if __name__ == "__main__":
-    x = threading.Thread(target=recv_thread_func, args=())
-    x.start()
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--mode', metavar='m', type=int,
+                        help='0(default): tcp host, 1: replay data file')
+    parser.add_argument('--recordpath', metavar='p', type=str,
+                        help='path to recorded data file or directory to put recordings')
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        print("Accepting TX\n")
-        s.bind((HOST, PORT_TX))
-        s.listen()
-        conn, addr = s.accept()
+    args = parser.parse_args()
 
-        print('TX Connected to ', addr)
+    root = tk.Tk()
+    root.geometry("1280x768+0+0")
+    
+    sender = Sender.Sender(HOST, PORT_TX)
 
-        while(1):
-            x = input()
-            conn.send(str.encode(x))
+    plot_frame1 = tk.Frame(root)
+    # plot_frame.pack_propagate(0)
+    plot_frame1.pack(fill='both', side='top', expand='True')
+    plot_frame2 = tk.Frame(root)
+    # plot_frame.pack_propagate(0)
+    plot_frame2.pack(fill='both', side='top', expand='True')
 
-    print('Connection aborted.')
+    x_plot = Plot.Plot(plot_frame1, "both", "left", "True")
+    y_plot = Plot.Plot(plot_frame1, "both", "right", "True")
+    z_plot = Plot.Plot(plot_frame2, "both", "left", "True")
+    throttle_plot = Plot.Plot(plot_frame2, "both", "right", "True")
+
+    controller = Controller.Controller(root, "x", "bottom", "False", sender)
+
+    plot_handler = PlotHandler.PlotHandler(x_plot, y_plot, z_plot, throttle_plot)
+    recorder = Recorder.Recorder(args.recordpath)
+
+    def d(event):
+        plot_handler.redraw()
+    root.bind('<Configure>', d)
+
+    if args.mode == 0:
+        recorder.start_recording()
+        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, recorder)
+    elif args.mode == 1:
+        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, None)
+        recorder.playback_recording(receiver, args.recordpath)
+    else:
+        print("unrecognized mode")
+
+    tk.mainloop()           

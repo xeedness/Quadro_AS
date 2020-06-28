@@ -1,4 +1,3 @@
-import socket
 import time
 import threading
 from tkinter import Tk
@@ -9,38 +8,11 @@ import Plot
 import PlotHandler
 import Recorder
 import argparse
+import Controller
 
 HOST = '192.168.2.116'
 PORT_TX = 12346        
 PORT_RX = 12345        
-
-START_BYTE = 2
-END_BYTE = 3
-
-def recv_thread_func():
-    # TODO Exit somehow
-    while(1):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            print("Accepting RX on "+str(PORT_RX))
-            s.bind((HOST, PORT_RX))
-            s.listen()
-            conn, addr = s.accept()
-            print('RX Connected to ', addr)
-            buffer = bytearray()
-            while(1):              
-                byte = conn.recv(1)
-                if(append_byte(byte[0], buffer)):
-                    receiver.receive(buffer[1:-1])
-                    del buffer[:]
-            print('Connection aborted.')
-           
-def append_byte(byte, buffer):
-    if byte == START_BYTE and len(buffer) > 0:
-        print("Another start byte received. Throwing away: "+buffer.hex())
-        del buffer[:]
-    buffer.append(byte)
-    return byte == END_BYTE    
-    print('Connection aborted.')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -51,12 +23,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-
-    
-
     tk = Tk()
-    tk.geometry("1280x768+300+300")
+    tk.geometry("1280x768+0+0")
     plot = Plot.Plot(tk)
+    sender = Sender.Sender(HOST, PORT_TX)
+    controller = Controller.Controller(tk, sender)
+
     plot_handler = PlotHandler.PlotHandler(plot)
     recorder = Recorder.Recorder(args.recordpath)
 
@@ -66,29 +38,15 @@ if __name__ == "__main__":
 
     if args.mode == 0:
         recorder.start_recording()
-        receiver = Receiver.Receiver(plot_handler, recorder)
+        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, recorder)
     elif args.mode == 1:
         receiver = Receiver.Receiver(plot_handler, None)
         recorder.playback_recording(receiver, args.recordpath)
     else:
         print("unrecognized mode")
-        
-    x = threading.Thread(target=recv_thread_func, args=())
-    x.start()
-    tk.mainloop()       
 
-    # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    #     print("Accepting TX on "+str(PORT_TX))
-    #     s.bind((HOST, PORT_TX))
-    #     while(True):
-    #         s.listen()
-    #         conn, addr = s.accept()
-
-    #         print('TX Connected to ', addr)
-    #         Sender.sendLoop(conn)
-            
+    tk.mainloop()           
    
-
 # window = tk.Tk()
     # frlfLabel = tk.Label(window,
     #     text="FRLF",

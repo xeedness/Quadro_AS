@@ -52,8 +52,8 @@ bool log_orientation(orientation_t or)
 	size_t or_length = sizeof(orientation_t) + 1;
 	uint8_t buf[or_length];
 	buf[0] = 42;
-	memcpy(buf + 1,						(char*)&or.ax, sizeof(float));
-	memcpy(buf + 1 + sizeof(float),		(char*)&or.ay, sizeof(float));
+	memcpy(buf + 1,	(char*)&or.ax, sizeof(float));
+	memcpy(buf + 1 + sizeof(float),	(char*)&or.ay, sizeof(float));
 	memcpy(buf + 1 + (2*sizeof(float)), (char*)&or.az, sizeof(float));
 	
 	return log_bytes(buf, or_length);

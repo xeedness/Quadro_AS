@@ -36,6 +36,8 @@
 #include "sensor.h"
 #include "pid.h"
 #include "controller.h"
+
+#include "log.h"
 #include "uart_bridge.h"
 
 
@@ -101,7 +103,6 @@ void setup(void) {
 	sysclk_init();
 	board_init();
 	delay_init(sysclk_get_cpu_hz());
-	
 	if (SysTick_Config(sysclk_get_cpu_hz() / 1000)) {
 		while (true) {  /* no error must happen here, otherwise this board is dead */ }
 	}
@@ -114,7 +115,8 @@ void setup(void) {
 	stdio_serial_init(CONF_UART, &uart_serial_options);
 	printf("Setup: Serial port communication at 9600bps\n");
 	
-	setup_uart_bridge();
+	//setup_uart_bridge();
+	log_init();
 	printf("Setup: Uart Bridge\n");
 	
 	
@@ -273,6 +275,7 @@ void runControl(void) {
 	state = -1;
 	next_state = IDLE_STATE;	
 	while(1) {
+		//uart_bridge_read_cmd_UGLY();
 		if(sensor_data_ready) {
 			updateOrientation();
 			sensor_data_ready = 0;
@@ -283,13 +286,13 @@ void runControl(void) {
 			switch(state) {
 			case(IDLE_STATE):
 				{
-					
 					printf("Idle\n");
 					printf("Valid: %lu Invalid: %lu\n", valid, invalid);
 					orientation_t orientation;
 					getOrientation(&orientation);
-					uart_bridge_send((uint8_t*)(&orientation.ax), 4);
-					uart_bridge_send((uint8_t*)(&orientation.ay), 4);
+					//uart_bridge_send((uint8_t*)(&orientation.ax), 4);
+					//uart_bridge_send((uint8_t*)(&orientation.ay), 4);
+					log_orientation(orientation);
 					printf("AngleX: %d AngleY: %d\n", (int16_t)orientation.ax, (int16_t)orientation.ay);
 					break;
 				}

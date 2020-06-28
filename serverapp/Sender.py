@@ -26,8 +26,8 @@ class Sender():
 
         self.listening = False
 
-    def send(self, payload):
-        encoded_payload = b85encode(payload)
+    def send(self, payload):            
+        encoded_payload = b85encode(payload, pad=True)
         msg = b'\x02' + encoded_payload + b'\x03'
 
         try:

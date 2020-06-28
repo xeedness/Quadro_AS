@@ -53,7 +53,7 @@ if __name__ == "__main__":
         recorder.start_recording()
         receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, recorder)
     elif args.mode == 1:
-        receiver = Receiver.Receiver(plot_handler, None)
+        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, None)
         recorder.playback_recording(receiver, args.recordpath)
     else:
         print("unrecognized mode")

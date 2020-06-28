@@ -7,6 +7,11 @@ class PlotHandler():
         self.z_plot = z_plot
         self.throttle_plot = throttle_plot
 
+        self.add_angle_plot_annotations(x_plot)
+        self.add_angle_plot_annotations(y_plot)
+        self.add_angle_plot_annotations(z_plot)
+        self.add_throttle_plot_annotations(throttle_plot)
+
         self.z_angle_graph = Plot.Graph(z_plot, "ZAngle", "red")
 
         self.y_angle_graph = Plot.Graph(y_plot, "YAngle", "red")
@@ -20,10 +25,7 @@ class PlotHandler():
         self.lr_graph = Plot.Graph(throttle_plot, "left rear", "blue")
         self.rr_graph = Plot.Graph(throttle_plot, "right rear", "orange")
 
-        self.add_angle_plot_annotations(x_plot)
-        self.add_angle_plot_annotations(y_plot)
-        self.add_angle_plot_annotations(z_plot)
-        self.add_throttle_plot_annotations(throttle_plot)
+        
 
 
     def add_angle_plot_annotations(self, plot):

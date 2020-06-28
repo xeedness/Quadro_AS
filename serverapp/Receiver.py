@@ -44,7 +44,6 @@ class Receiver():
             del buffer[:]
         buffer.append(byte)
         return byte == END_BYTE    
-        print('Connection aborted.')
 
     def receive(self, packet):
         if self.recorder:
@@ -59,18 +58,40 @@ class Receiver():
             print("Interpreted data as integer: "+str(value))
         elif msg_type == 42:
             self.sensor_update(data)
+        elif msg_type == 43:
+            self.pid_update(data)
+        elif msg_type == 44:
+            self.throttle_update(data)
         else:
             print("Could not interpret msg_type: "+str(msg_type))
 
     def sensor_update(self, data):
-        # [x_angle, y_angle, z_angle] = struct.unpack('f', data[0:12])
-        x_angle = struct.unpack('f', data[0:4])[0]
-        y_angle = struct.unpack('f', data[4:8])[0]
-        z_angle = struct.unpack('f', data[8:12])[0]
+        [x_angle, y_angle, z_angle] = struct.unpack('fff', data[0:12])
         self.plot_handler.record_x_angle(x_angle)
         self.plot_handler.record_y_angle(y_angle)
         self.plot_handler.record_z_angle(z_angle)
-        # print("x: "+str(x_angle))
-        # print("y: "+str(y_angle))
-        # print("z: "+str(z_angle))
+        # print("x angle: "+str(x_angle))
+        # print("y angle: "+str(y_angle))
+        # print("z angle: "+str(z_angle))
+
+    def pid_update(self, data):
+        [x_pid, y_pid] = struct.unpack('ff', data[0:8])
+        self.plot_handler.record_x_pid(x_pid)
+        self.plot_handler.record_y_pid(y_pid)
+        # print("x pid: "+str(x_pid))
+        # print("y pid: "+str(y_pid))
+
+    def throttle_update(self, data):
+        [lf, rf, lr, rr] = struct.unpack('ffff', data[0:8])
+        self.plot_handler.record_lf_throttle(lf)
+        self.plot_handler.record_rf_throttle(rf)
+        self.plot_handler.record_lr_throttle(lr)
+        self.plot_handler.record_rr_throttle(rr)
+        # print("lf: " + str(lf))
+        # print("rf: " + str(rf))
+        # print("lr: " + str(lr))
+        # print("rr: " + str(rr))
+
+
+    
 

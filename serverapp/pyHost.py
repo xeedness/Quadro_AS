@@ -1,6 +1,6 @@
 import time
 import threading
-from tkinter import Tk
+import tkinter as tk
 import base64
 import Receiver
 import Sender
@@ -23,18 +23,31 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    tk = Tk()
-    tk.geometry("1280x768+0+0")
-    plot = Plot.Plot(tk)
+    root = tk.Tk()
+    root.geometry("1280x768+0+0")
+    
     sender = Sender.Sender(HOST, PORT_TX)
-    controller = Controller.Controller(tk, sender)
 
-    plot_handler = PlotHandler.PlotHandler(plot)
+    plot_frame1 = tk.Frame(root)
+    # plot_frame.pack_propagate(0)
+    plot_frame1.pack(fill='both', side='top', expand='True')
+    plot_frame2 = tk.Frame(root)
+    # plot_frame.pack_propagate(0)
+    plot_frame2.pack(fill='both', side='top', expand='True')
+
+    x_plot = Plot.Plot(plot_frame1, "both", "left", "True")
+    y_plot = Plot.Plot(plot_frame1, "both", "right", "True")
+    z_plot = Plot.Plot(plot_frame2, "both", "left", "True")
+    throttle_plot = Plot.Plot(plot_frame2, "both", "right", "True")
+
+    controller = Controller.Controller(root, "x", "bottom", "False", sender)
+
+    plot_handler = PlotHandler.PlotHandler(x_plot, y_plot, z_plot, throttle_plot)
     recorder = Recorder.Recorder(args.recordpath)
 
     def d(event):
         plot_handler.redraw()
-    tk.bind('<Configure>', d)
+    root.bind('<Configure>', d)
 
     if args.mode == 0:
         recorder.start_recording()

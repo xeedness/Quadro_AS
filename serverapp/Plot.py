@@ -6,16 +6,18 @@ WIDTH = 1280
 ANNOTATION_COLOR = "#AAAAAA"
 
 class Plot(Frame):
-    def __init__(self, root):
-        super().__init__()
+    def __init__(self, root, fill, side, expand):
+        super().__init__(root, borderwidth=1)
         self.root = root
+        self.side = side
+        self.fill = fill
+        self.expand = expand
         self.initUI()
 
         
 
     def initUI(self):
-        self.master.title("Lines")
-        self.pack(fill=BOTH, expand=1)
+        self.pack(fill=self.fill, side=self.side, expand=self.expand)
         self.canvas = Canvas(self)
         self.canvas.pack(fill=BOTH, expand=1)
         self.root.update()
@@ -73,7 +75,7 @@ class Graph():
         self.lines = []
 
         for i in range(0, PLOT_POINTS):
-            self.values.append(i/PLOT_POINTS)
+            self.values.append(0.5)
 
         for i in range(0, PLOT_POINTS):
             self.points.append(self.plot.get_point(i/PLOT_POINTS, self.values[i]))
@@ -81,13 +83,10 @@ class Graph():
         for i in range(0, PLOT_POINTS-1):
             self.lines.append(self.plot.canvas.create_line(self.points[i], self.points[i+1], width=1, fill=self.color))
 
-    def scale_value(self, value):
-        return value/120 + 0.5
-
     def record_value(self, value): 
         new_index = (self.last_index+1) % PLOT_POINTS
-        self.values[new_index] = scaled_value = self.scale_value(value)
-        self.points[new_index] = self.plot.get_point(new_index/PLOT_POINTS, scaled_value)  
+        self.values[new_index] = value
+        self.points[new_index] = self.plot.get_point(new_index/PLOT_POINTS, value)  
         
         if(new_index > 0):
             p1 = self.points[self.last_index]

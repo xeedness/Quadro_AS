@@ -6,14 +6,17 @@ import Sender
 import struct
 
 class Controller(Frame):
-    def __init__(self, root, sender: Sender):
-        super().__init__(relief=RAISED, borderwidth=1, padx = 5, pady = 5)
+    def __init__(self, root, fill, side, expand, sender: Sender):
+        super().__init__(root, relief=RAISED, borderwidth=1, padx = 5, pady = 5)
         self.root = root
         self.sender = sender
+        self.side = side
+        self.fill = fill
+        self.expand = expand
         self.initUI()
 
     def initUI(self):
-        self.pack(fill=X, expand=0)
+        self.pack(fill=self.fill, side=self.side, expand=self.expand)
 
         self.send_btn = Button(self, text="Send", command=self.send)
         self.send_btn.pack(side=RIGHT, padx=5, pady=5)

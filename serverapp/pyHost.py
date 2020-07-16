@@ -9,12 +9,14 @@ import PlotHandler
 import Recorder
 import argparse
 import Controller
-
+import Config
+from tkinter import *
 HOST = '192.168.2.116'
 PORT_TX = 12346        
 PORT_RX = 12345        
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--mode', metavar='m', type=int,
                         help='0(default): tcp host, 1: replay data file')
@@ -24,7 +26,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     root = tk.Tk()
-    root.geometry("1280x768+0+0")
+    root.geometry("1280x900+0+0")
     
     sender = Sender.Sender(HOST, PORT_TX)
 
@@ -40,7 +42,8 @@ if __name__ == "__main__":
     z_plot = Plot.Plot(plot_frame2, "both", "left", "True")
     throttle_plot = Plot.Plot(plot_frame2, "both", "right", "True")
 
-    controller = Controller.Controller(root, "x", "bottom", "False", sender)
+    config = Config.Config("config.ini")
+    controller = Controller.Controller(root, "x", "bottom", "False", sender, config)
 
     plot_handler = PlotHandler.PlotHandler(x_plot, y_plot, z_plot, throttle_plot)
     recorder = Recorder.Recorder(args.recordpath)
@@ -51,9 +54,9 @@ if __name__ == "__main__":
 
     if args.mode == 0:
         recorder.start_recording()
-        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, recorder)
+        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, recorder, controller)
     elif args.mode == 1:
-        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, None)
+        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, None, controller)
         recorder.playback_recording(receiver, args.recordpath)
     else:
         print("unrecognized mode")

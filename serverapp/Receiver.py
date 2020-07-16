@@ -5,17 +5,20 @@ import threading
 import socket
 from PlotHandler import PlotHandler
 from Recorder import Recorder
+from Controller import Controller
+import MessageTypes
 
 START_BYTE = 2
 END_BYTE = 3
 
 class Receiver():
 
-    def __init__(self, host, port, plot_handler: PlotHandler, recorder: Recorder):
+    def __init__(self, host, port, plot_handler: PlotHandler, recorder: Recorder, controller: Controller):
         self.host = host
         self.port = port
         self.plot_handler = plot_handler
         self.recorder = recorder
+        self.controller = controller
         self.start_recv_thread()
 
     def start_recv_thread(self):
@@ -46,24 +49,29 @@ class Receiver():
         return byte == END_BYTE    
 
     def receive(self, packet):
-        if self.recorder:
-            self.recorder.record_packet(packet)
-        payload = b85decode(packet)
-        msg_type = payload[0]
-        data = payload[1:]
-        # print("Received ["+hex(msg_type)+"] "+ data.hex())
+        try:
+            if self.recorder:
+                self.recorder.record_packet(packet)
+            payload = b85decode(packet)
+            msg_type = payload[0]
+            data = payload[1:]
+            # print("Received ["+hex(msg_type)+"] "+ data.hex())
 
-        if msg_type == 0:
-            value = int.from_bytes(data, "big")
-            print("Interpreted data as integer: "+str(value))
-        elif msg_type == 42:
-            self.sensor_update(data)
-        elif msg_type == 43:
-            self.pid_update(data)
-        elif msg_type == 44:
-            self.throttle_update(data)
-        else:
-            print("Could not interpret msg_type: "+str(msg_type))
+            if msg_type == 0:
+                value = int.from_bytes(data, "big")
+                print("Interpreted data as integer: "+str(value))
+            elif msg_type == MessageTypes.INIT:
+                self.send_init()
+            elif msg_type == MessageTypes.SENSOR:
+                self.sensor_update(data)
+            elif msg_type == MessageTypes.PID:
+                self.pid_update(data)
+            elif msg_type == MessageTypes.THROTTLE_LOG:
+                self.throttle_update(data)
+            else:
+                print("Could not interpret msg_type: "+str(msg_type))
+        except:
+            print("Decoding exception. Throwing away packet")
 
     def sensor_update(self, data):
         [x_angle, y_angle, z_angle] = struct.unpack('fff', data[0:12])
@@ -82,7 +90,7 @@ class Receiver():
         # print("y pid: "+str(y_pid))
 
     def throttle_update(self, data):
-        [lf, rf, lr, rr] = struct.unpack('ffff', data[0:8])
+        [lf, rf, lr, rr] = struct.unpack('HHHH', data[0:8])
         self.plot_handler.record_lf_throttle(lf)
         self.plot_handler.record_rf_throttle(rf)
         self.plot_handler.record_lr_throttle(lr)
@@ -91,6 +99,10 @@ class Receiver():
         # print("rf: " + str(rf))
         # print("lr: " + str(lr))
         # print("rr: " + str(rr))
+
+    def send_init(self):
+        self.controller.send_config()
+
 
 
     

@@ -1,6 +1,6 @@
 from tkinter import Tk, Canvas, Frame, BOTH
 
-PLOT_POINTS = 200
+PLOT_POINTS = 1000
 HEIGHT = 768
 WIDTH = 1280
 ANNOTATION_COLOR = "#AAAAAA"

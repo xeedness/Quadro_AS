@@ -37,29 +37,7 @@ class Sender():
             else:
                 raise RuntimeError("socket connection broken")
         except: 
-            print("Could not send "+payload.hex()+ "(" + msg.hex() + ")")
             if(not self.listening):
+                print("Could not send "+payload.hex()+ "(" + msg.hex() + ")")
                 self.start_open_socket_thread()
-
-# def sendLoop(socket):
-#     while(1):
-#         try:
-#             x = input()
-#             values = x.split(" ")
-#             msg_type = int(values[0])
-
-#             if msg_type == 44:
-#                 intensity = float(values[1])
-#                 payload = msg_type.to_bytes(1, "big") + intensity.to_bytes(4, "big")
-#             else:
-#                 payload = msg_type.to_bytes(1, "big")
-#         except:
-#             print("Invalid input")
-#             continue
-
-#         print("Sending bytes: "+payload.hex())
-#         encoded_payload = b85encode(payload)
-#         print("Sending b85: "+encoded_payload.hex())
-       
-#         socket.send(b'\x02' + encoded_payload + b'\x03')
-        
+            

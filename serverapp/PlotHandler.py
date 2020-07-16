@@ -38,7 +38,10 @@ class PlotHandler():
         Plot.GraphAnnotation(plot, 0.5-0.125*3, "-45°", "-45°")
 
     def add_throttle_plot_annotations(self, plot):
-        Plot.GraphAnnotation(plot, 0.5, "0", "0")
+        Plot.GraphAnnotation(plot, 0.0, "0", "0")
+        Plot.GraphAnnotation(plot, 0.25, "25", "25")
+        Plot.GraphAnnotation(plot, 0.50, "50", "50")
+        Plot.GraphAnnotation(plot, 0.75, "75", "75")
 
     def redraw(self):
         self.x_plot.redraw()
@@ -70,7 +73,7 @@ class PlotHandler():
     def record_rf_throttle(self, value):
         self.rf_graph.record_value(self.scale_throttle(value))
 
-    def record_lr_throttle(self, pivalued):
+    def record_lr_throttle(self, value):
         self.lr_graph.record_value(self.scale_throttle(value))
 
     def record_rr_throttle(self, value):
@@ -83,4 +86,4 @@ class PlotHandler():
         return value/120 + 0.5
 
     def scale_throttle(self, value):
-        return value/120 + 0.5
+        return (value-1000)/1000

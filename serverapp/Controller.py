@@ -125,6 +125,12 @@ class Controller(Frame):
         self.speed_interval = StringVar(self, value=self.config.speed_interval)
         self.speed_interval_input = Entry(self, textvariable=self.speed_interval)
 
+        # Sensor
+
+        self.acceleration_weight_label = Label(self, text="Acceleration-Weight")
+        self.acceleration_weight = StringVar(self, value=self.config.acceleration_weight)
+        self.acceleration_weight_input = Entry(self, textvariable=self.acceleration_weight)        
+
         # Log
         self.orientation_enabled_label = Label(self, text="Log-Orientation")
         self.orientation_enabled = StringVar(self, value=self.config.orientation_enabled)
@@ -141,6 +147,9 @@ class Controller(Frame):
         self.log_interval_label = Label(self, text="Log-Interval")
         self.log_interval = StringVar(self, value=self.config.log_interval)
         self.log_interval_input = Entry(self, textvariable=self.log_interval)
+
+        
+
 
         # Controls
 
@@ -177,6 +186,9 @@ class Controller(Frame):
         self.speed_enabled_input.grid(row=4, column=5, padx=5, pady=5)
         self.log_interval_label.grid(row=5, column=4, padx=5, pady=5)
         self.log_interval_input.grid(row=5, column=5, padx=5, pady=5)
+
+        self.acceleration_weight_label.grid(row=2, column=6, padx=5, pady=5)
+        self.acceleration_weight_input.grid(row=2, column=7, padx=5, pady=5)
 
         self.send_config_btn.grid(row=6, column=4, padx=5, pady=5)
         self.save_config_btn.grid(row=6, column=5, padx=5, pady=5)
@@ -244,6 +256,8 @@ class Controller(Frame):
         self.config.pid_enabled = int(self.pid_enabled.get())
         self.config.speed_enabled = int(self.speed_enabled.get())
         self.config.log_interval = int(self.log_interval.get())
+
+        self.config.acceleration_weight = float(self.acceleration_weight.get())
     
     def send_config(self):
         self.apply_config()
@@ -266,6 +280,9 @@ class Controller(Frame):
         payload = payload + struct.pack("<H", self.config.max_speed)
         payload = payload + struct.pack("<H", self.config.min_speed)
         payload = payload + struct.pack("<i", self.config.speed_interval)
+
+        payload = payload + struct.pack("f", self.config.acceleration_weight)
+
         self.send_msg(MessageTypes.INIT, payload)
 
 

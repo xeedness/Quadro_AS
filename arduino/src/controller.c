@@ -60,7 +60,8 @@ void handle_init(uint8_t* payload) {
 	
 	memcpy((char*)&pid_config, (char*)payload, sizeof(pid_config_t));
 	memcpy((char*)&log_config, (char*)(payload) + sizeof(pid_config_t), sizeof(log_config_t));	
-	memcpy((char*)&esc_config, (char*)(payload) + sizeof(pid_config_t) +  + sizeof(log_config_t), sizeof(esc_config_t));
+	memcpy((char*)&esc_config, (char*)(payload) + sizeof(pid_config_t)  + sizeof(log_config_t), sizeof(esc_config_t));
+	memcpy((char*)&sensor_config, (char*)(payload) + sizeof(pid_config_t)  + sizeof(log_config_t) + sizeof(esc_config_t), sizeof(sensor_config_t));
 	
 	
 	printf("Received configuration.");
@@ -83,6 +84,9 @@ void handle_init(uint8_t* payload) {
 	printf(" Max-Speed: %u\n", esc_config.max_speed);
 	printf(" Min-Speed: %u\n", esc_config.min_speed);
 	printf(" Interval-MS: %lu\n", esc_config.update_interval_ms);
+	
+	printf("Sensor Config: \n");
+	printf(" Acceleration Weight: %.5f\n", sensor_config.acceleration_weight);
 	
 	request_status[MSG_INIT] = 1;
 }

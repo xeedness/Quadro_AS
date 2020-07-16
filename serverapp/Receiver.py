@@ -19,27 +19,34 @@ class Receiver():
         self.plot_handler = plot_handler
         self.recorder = recorder
         self.controller = controller
-        self.start_recv_thread()
+        self.start_listen_thread()
 
-    def start_recv_thread(self):
-        self.thread = threading.Thread(target=self.recv_thread_func, args=())
+    def start_listen_thread(self):
+        self.thread = threading.Thread(target=self.listen_thread_func, args=())
         self.thread.start()
 
-    def recv_thread_func(self):
-        while(True):
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                print("Accepting RX on "+str(self.port))
-                s.bind((self.host, self.port))
-                s.listen()
+    def start_recv_thread(self, conn):
+        self.thread = threading.Thread(target=self.recv_thread_func, args=[conn])
+        self.thread.start()
+
+    def listen_thread_func(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            print("Accepting RX on "+str(self.port))
+            s.bind((self.host, self.port))
+            s.listen()
+            while(True):
                 conn, addr = s.accept()
                 print('RX Connected to ', addr)
-                buffer = bytearray()
-                while(1):              
-                    byte = conn.recv(1)
-                    if(self.append_byte(byte[0], buffer)):
-                        self.receive(buffer[1:-1])
-                        del buffer[:]
-                print('Connection aborted.')      
+                self.start_recv_thread(conn)
+        
+    def recv_thread_func(self, conn):
+        buffer = bytearray()
+        while(1):              
+            byte = conn.recv(1)
+            if(self.append_byte(byte[0], buffer)):
+                self.receive(buffer[1:-1])
+                del buffer[:]
+        print('Connection aborted.')      
            
     def append_byte(self, byte, buffer):
         if byte == START_BYTE and len(buffer) > 0:

@@ -150,7 +150,7 @@ void timed_running(void) {
 		next_state = SHUTDOWN;
 	}
 	if(elapsed_time_ms(last_pid_ticks) > pid_config.update_interval_ms) {
-		printf("Updating angles: %.2f %.2f\n", current_orientation.ax, current_orientation.ay);
+		//printf("Updating angles: %.2f %.2f\n", current_orientation.ax, current_orientation.ay);
 		feed_angles(current_orientation.ax, current_orientation.ay);
 		last_pid_ticks = current_ticks();
 	}

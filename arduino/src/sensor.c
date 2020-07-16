@@ -9,6 +9,7 @@
 //#include "controller.h"
 #include "timer.h"
 #include <math.h>
+#include "config.h"
 
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	uint8_t data[12]; // data array to hold accelerometer and gyro x, y, z, data
@@ -333,14 +334,14 @@ uint8_t updateOrientation() {
 	}
 	
 	//Update orientation
-	if(++sumCounter < 250/SAMPLES_PER_SECOND) {
-		gyroSumX += accel_t_gyro.value.x_gyro;
-		gyroSumY += accel_t_gyro.value.y_gyro;
-		gyroSumZ += accel_t_gyro.value.z_gyro;
-		accelSumX += accel_t_gyro.value.x_accel;
-		accelSumY += accel_t_gyro.value.y_accel;
-		accelSumZ += accel_t_gyro.value.z_accel+(int)(G_1);
-	} else {
+	gyroSumX += accel_t_gyro.value.x_gyro;
+	gyroSumY += accel_t_gyro.value.y_gyro;
+	gyroSumZ += accel_t_gyro.value.z_gyro;
+	accelSumX += accel_t_gyro.value.x_accel;
+	accelSumY += accel_t_gyro.value.y_accel;
+	accelSumZ += accel_t_gyro.value.z_accel;
+	
+	if(sumCounter++ < 250/SAMPLES_PER_SECOND) {
 		dGyroOrientation.ax = (float)(gyroSumX)/(DGS_250);
 		dGyroOrientation.ay = (float)(gyroSumY)/(DGS_250);
 		dGyroOrientation.az = (float)(gyroSumZ)/(DGS_250);
@@ -350,6 +351,16 @@ uint8_t updateOrientation() {
 		gyroOrientation.ax = current_orientation.ax + dGyroOrientation.ax*elapsed_time/(sumCounter);
 		gyroOrientation.ay = current_orientation.ay + dGyroOrientation.ay*elapsed_time/(sumCounter);
 		gyroOrientation.az = current_orientation.az + dGyroOrientation.az*elapsed_time/(sumCounter);
+		
+		float length, x,y,z, xy, zy, yx, zx;
+		//x = (float)accel_t_gyro.value.x_accel;
+		//y = (float)accel_t_gyro.value.y_accel;
+		//z = (float)accel_t_gyro.value.z_accel;
+		
+		x = (float)(accelSumX)/sumCounter;
+		y = (float)(accelSumY)/sumCounter;
+		z = (float)(accelSumZ)/sumCounter;
+		
 		
 		gyroSumX = 0;
 		gyroSumY = 0;
@@ -363,10 +374,7 @@ uint8_t updateOrientation() {
 			return 1;
 		}
 	
-		float length, x,y,z, xy, zy, yx, zx;
-		x = (float)accel_t_gyro.value.x_accel;
-		y = (float)accel_t_gyro.value.y_accel;
-		z = (float)accel_t_gyro.value.z_accel;
+		
 	
 		//Calc xz-plane projection
 		xy = x;
@@ -383,8 +391,8 @@ uint8_t updateOrientation() {
 		zx /= length;
 	
 		//Apply angles between (0,0,-1)
-		accelOrientation.ax = acos(-1.0f*zx)*(180.0f/3.14f);
-		accelOrientation.ay = acos(-1.0f*zy)*(180.0f/3.14f);
+		accelOrientation.ax = acos(-1.0f*zx)*(180.0f/M_PI);
+		accelOrientation.ay = acos(-1.0f*zy)*(180.0f/M_PI);
 		accelOrientation.az = 0;
 		
 		if(yx < 0) {
@@ -394,8 +402,8 @@ uint8_t updateOrientation() {
 		if(xy > 0) {
 			accelOrientation.ay *= -1;
 		}
-		current_orientation.ax = (1.0f-COMPLEMENTARY_ALPHA)*(gyroOrientation.ax) + COMPLEMENTARY_ALPHA*accelOrientation.ax;
-		current_orientation.ay = (1.0f-COMPLEMENTARY_ALPHA)*(gyroOrientation.ay) + COMPLEMENTARY_ALPHA*accelOrientation.ay;
+		current_orientation.ax = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ax) + sensor_config.acceleration_weight*accelOrientation.ax;
+		current_orientation.ay = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ay) + sensor_config.acceleration_weight*accelOrientation.ay;
 		current_orientation.az = gyroOrientation.az;
 		
 		//Update position

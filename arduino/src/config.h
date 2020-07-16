@@ -13,6 +13,10 @@
 //#define RUN_TIME 10000
 #define LANDING_TIME 10000
 
+typedef struct sensor_config_s{
+	float acceleration_weight;
+} sensor_config_t;
+
 typedef struct pid_config_s{
 	float pid_factor;
 	float pid_p_factor;
@@ -39,5 +43,6 @@ typedef struct log_config_s {
 extern pid_config_t pid_config;
 extern esc_config_t esc_config;
 extern log_config_t log_config;
+extern sensor_config_t sensor_config;
 
 #endif

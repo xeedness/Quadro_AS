@@ -25,27 +25,31 @@ class Config():
         self.speed_enabled = 1
         self.log_interval = 50
 
+        self.acceleration_weight = 0.01
+
     def load_config(self):
         if os.path.exists(self.filepath):
             config = configparser.ConfigParser()
             config.read(self.filepath)
 
-            self.pid_factor = config['DEFAULT']['PID-Factor']
-            self.p_factor = config['DEFAULT']['P-Factor']
-            self.i_factor = config['DEFAULT']['I-Factor']
-            self.d_factor = config['DEFAULT']['D-Factor']
-            self.pid_interval = config['DEFAULT']['PID-Interval']
+            self.pid_factor = float(config['DEFAULT']['PID-Factor'])
+            self.p_factor = float(config['DEFAULT']['P-Factor'])
+            self.i_factor = float(config['DEFAULT']['I-Factor'])
+            self.d_factor = float(config['DEFAULT']['D-Factor'])
+            self.pid_interval = int(config['DEFAULT']['PID-Interval'])
             
-            self.landing_speed = config['DEFAULT']['Landing-Speed']
-            self.hover_speed = config['DEFAULT']['Hover-Speed']
-            self.max_speed = config['DEFAULT']['Max-Speed']
-            self.min_speed = config['DEFAULT']['Min-Speed']
-            self.speed_interval = config['DEFAULT']['Speed-Interval']
+            self.landing_speed = int(config['DEFAULT']['Landing-Speed'])
+            self.hover_speed = int(config['DEFAULT']['Hover-Speed'])
+            self.max_speed = int(config['DEFAULT']['Max-Speed'])
+            self.min_speed = int(config['DEFAULT']['Min-Speed'])
+            self.speed_interval = int(config['DEFAULT']['Speed-Interval'])
 
-            self.orientation_enabled = config['DEFAULT']['Orientation-Enabled']
-            self.pid_enabled = config['DEFAULT']['PID-Enabled']
-            self.speed_enabled = config['DEFAULT']['Speed-Enabled']
-            self.log_interval = config['DEFAULT']['Log-Interval']
+            self.orientation_enabled = int(config['DEFAULT']['Orientation-Enabled'])
+            self.pid_enabled = int(config['DEFAULT']['PID-Enabled'])
+            self.speed_enabled = int(config['DEFAULT']['Speed-Enabled'])
+            self.log_interval = int(config['DEFAULT']['Log-Interval'])
+
+            self.acceleration_weight = float(config['DEFAULT']['Acceleration-Weight'])
 
             print("Read Config")
 
@@ -70,6 +74,8 @@ class Config():
         config['DEFAULT']['PID-Enabled'] = str(self.pid_enabled)
         config['DEFAULT']['Speed-Enabled'] = str(self.speed_enabled)
         config['DEFAULT']['Log-Interval'] = str(self.log_interval)
+
+        config['DEFAULT']['Acceleration-Weight'] = str(self.acceleration_weight)
 
         with open(self.filepath, 'w') as configfile:
             config.write(configfile)

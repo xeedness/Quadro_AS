@@ -54,6 +54,7 @@ void timed_speed_update(void);
 pid_config_t pid_config;
 esc_config_t esc_config;
 log_config_t log_config;
+sensor_config_t sensor_config;
 
 uint32_t last_log_ticks = 0;
 
@@ -143,6 +144,8 @@ void set_default_config(void) {
 	log_config.pid_enabled = 0;
 	log_config.speed_enabled = 0;
 	log_config.log_interval_ms = 50;
+	
+	sensor_config.acceleration_weight = 0.1f;
 }
 
 // Update PID values according to configured update interval

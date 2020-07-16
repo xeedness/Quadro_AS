@@ -8,16 +8,9 @@
 #include "esc.h"
 #include "asf.h"
 
-void minThrottle(void) {
-	REG_PWM_CDTYUPD0 = REG_PWM_CDTYUPD1 = REG_PWM_CDTYUPD2 = REG_PWM_CDTYUPD3 = ESC_LOW;
-}
-
-void maxThrottle(void) {
-	REG_PWM_CDTYUPD0 = REG_PWM_CDTYUPD1 = REG_PWM_CDTYUPD2 = REG_PWM_CDTYUPD3 = ESC_HIGH;
-}
+speed_t speed;
 
 void setupESC(void) {
-	printf("ESC Setup ... ");
 	// PWM Set-up on pin: DAC1
 	REG_PMC_PCER1 |= PMC_PCER1_PID36;                     // Enable PWM
 	REG_PIOC_ABSR |= PIO_ABSR_P2;                        // Set PWM pin perhipheral type A or B, in this case B
@@ -34,9 +27,31 @@ void setupESC(void) {
 	REG_PWM_CDTY0 = REG_PWM_CDTY1 = REG_PWM_CDTY2 = REG_PWM_CDTY3 = ESC_LOW;                              // Set the PWM duty cycle to 1500 - centre the servo
 	REG_PWM_ENA = PWM_ENA_CHID0 | PWM_ENA_CHID1 | PWM_ENA_CHID2 | PWM_ENA_CHID3;                          // Enable the PWM channel
 	
+	setCurrentBaseSpeed(1000);
 	minThrottle();
-	printf("done.\n");
 }
+
+void setCurrentBaseSpeed(uint16_t base_speed) {
+	current_base_speed = base_speed;
+}
+
+void minThrottle(void) {
+	speed.front_left_speed = speed.front_right_speed = speed.rear_left_speed = speed.rear_right_speed = ESC_LOW;
+	writeSpeed();
+}
+
+void maxThrottle(void) {
+	speed.front_left_speed = speed.front_right_speed = speed.rear_left_speed = speed.rear_right_speed = ESC_HIGH;
+	writeSpeed();
+}
+
+void writeSpeed(void) {
+	REG_PWM_CDTYUPD0 = speed.front_left_speed;
+	REG_PWM_CDTYUPD1 = speed.front_right_speed;
+	REG_PWM_CDTYUPD2 = speed.rear_right_speed;
+	REG_PWM_CDTYUPD3 = speed.rear_left_speed;
+}
+
 
 void axisTest(void) {
 	minThrottle();

@@ -47,17 +47,18 @@ typedef struct position{
 orientation_t current_orientation;
 position_t current_position;
 uint32_t last_sensor_tick;
+uint8_t sensor_data_ready;
 
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias);
 void selfTest(float* destination);
-void setupSensor(Twi* interface);
+void setupSensor(Twi* interface, uint32_t currentTicks);
 uint8_t getSensorData(accel_t_gyro_union* accel_t_gyro);
 void getOrientation(orientation_t* orientation);
 void getPosition(position_t* position);
 uint8_t updateOrientation(void);
 uint32_t getFifoSensorData(accel_gyro_union* accel_gyro, uint32_t max_count);
 void sensorAxisTest(void);
-
-
+void onSensorDataReady(uint32_t arg0, uint32_t arg1);
+uint8_t is_sensor_alive(void);
 
 #endif //SENSOR_INO

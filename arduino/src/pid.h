@@ -21,9 +21,6 @@
 //float angles_y[HISTORY_SIZE];
 float last_error_x;
 float last_error_y;
-float k1, k2, k3;
-float pid_value_x;
-float pid_value_y;
 float i_value_x;
 float i_value_y;
 
@@ -31,10 +28,15 @@ float target_x, target_y;
 
 uint32_t last_angle_tick;
 
-void init_pid(void);
-void set_constants(float p_k, float i_k, float d_k);
+typedef struct pid_values_s {
+	float x;
+	float y;	
+} pid_values_t;
+
+extern pid_values_t pid_values;
+
+void pid_init(void);
 void set_target(float angleX, float angleY);
 void feed_angles(float angleX, float angleY);
-void pid_values(float* x, float* y);
 
 #endif /* PID_H_ */

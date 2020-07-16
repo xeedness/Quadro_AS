@@ -6,24 +6,17 @@
  */ 
 
 #include "pid.h"
-#include "controller.h"
- void init_pid() {
-	 pid_value_x = pid_value_y = 0;
+#include "timer.h"
+#include "config.h"
+
+pid_values_t pid_values = {0, 0};
+
+ void pid_init(void) {
+	 //pid_values = {0, 0};
 	 target_x = target_y = 0;
 	 i_value_x = i_value_y = 0;
 	 last_error_x = last_error_y = 0;
-	 last_angle_tick = ticks;
- }
- 
- void set_constants(float p_k, float i_k, float d_k) {
-	k1 = p_k;
-	k2 = i_k;
-	k3 = d_k; 
- }
- 
- void pid_values(float* x, float* y) {
-	 (*x) = pid_value_x;
-	 (*y) = pid_value_y;
+	 last_angle_tick = current_ticks();
  }
  
  void feed_angles(float angleX, float angleY) {
@@ -31,7 +24,7 @@
 	 float error_y, p_value_y, d_value_y;
 	 
 	 float elapsed_time = elapsed_time_s(last_angle_tick);
-	 last_angle_tick = ticks;
+	 last_angle_tick = current_ticks();
 	 if(elapsed_time > 1.0f) {
 		 elapsed_time = 1.0f;
 	 }
@@ -54,8 +47,8 @@
 	 d_value_y = (error_y-last_error_y)/elapsed_time;
 	 
 	 // Generate pid value by weighted sum
-	 pid_value_x = k1*p_value_x+k2*i_value_x+k3*d_value_x;
-	 pid_value_y = k1*p_value_y+k2*i_value_y+k3*d_value_y; 
+	 pid_values.x = pid_config.pid_p_factor*p_value_x+pid_config.pid_i_factor*i_value_x+pid_config.pid_d_factor*d_value_x;
+	 pid_values.y = pid_config.pid_p_factor*p_value_y+pid_config.pid_i_factor*i_value_y+pid_config.pid_d_factor*d_value_y; 
 	 
 	 // Remember the last error to calc next values
 	 last_error_x = error_x;

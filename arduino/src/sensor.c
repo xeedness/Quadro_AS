@@ -6,7 +6,8 @@
  */ 
 #include "sensor.h"
 #include "i2c.h"
-#include "controller.h"
+//#include "controller.h"
+#include "timer.h"
 #include <math.h>
 
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
@@ -190,23 +191,40 @@ void selfTest(float* destination) {
 	  }
 }
 
-void setupSensor(Twi* interface) {
-	printf("Sensor Setup...\n");
+void setupSensor(Twi* interface, uint32_t currentTicks) {	
+	//Enable sensor interrupt
+	pmc_enable_periph_clk(ID_PIOB);
+	// Configure sensor vcc
+	pio_set_output(PIOB, PIO_PB21, LOW, DISABLE, ENABLE);
+	pio_clear(PIOB, PIO_PB21);
+	// Configure sensor interrupt
+	pio_set_input(PIOB, PIO_PB26, PIO_PULLUP);
+	pio_handler_set(PIOB, ID_PIOB, PIO_PB26, PIO_IT_FALL_EDGE, onSensorDataReady);
+	pio_enable_interrupt(PIOB, PIO_PB26);
+	NVIC_SetPriority(PIOB_IRQn, 1);
+	NVIC_EnableIRQ(PIOB_IRQn);
+	// Set initial value of sensor data ready flag
+	sensor_data_ready = 0;
+	
+	// Ensure powering down sensor and turn back on after a second
+	delay_s(1);
+	pio_set(PIOB, PIO_PB21);
+	
 	sensor_interface = interface;
 	delay_ms(200);
     openI2CServer(sensor_interface, TWI_CLK, MPU6050_I2C_ADDRESS);	
-	printf("I2C Opened\n");
+
 	sendPacket(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_1, 0x80, 1); // Write a one to bit 7 reset bit; toggle reset device
-	printf("Device Reset\n");
+
 	selfTest(SelfTest);
 	
-	printf("AccelSelfTest: %d %d %d\n",(int)(100*SelfTest[0]), (int)(100*SelfTest[1]), (int)(100*SelfTest[2]));
-	printf("GyroSelfTest: %d %d %d\n",(int)(100*SelfTest[3]), (int)(100*SelfTest[4]), (int)(100*SelfTest[5]));
+	//printf("AccelSelfTest: %d %d %d\n",(int)(100*SelfTest[0]), (int)(100*SelfTest[1]), (int)(100*SelfTest[2]));
+	//printf("GyroSelfTest: %d %d %d\n",(int)(100*SelfTest[3]), (int)(100*SelfTest[4]), (int)(100*SelfTest[5]));
 	
 	calibrate(gyroBias, accelBias);
 	
-	printf("GyroBias: %d %d %d\n",gyroBias[0], gyroBias[1], gyroBias[2]);
-	printf("AccelBias: %d %d %d\n",accelBias[0], accelBias[1], accelBias[2]);
+	//printf("GyroBias: %d %d %d\n",gyroBias[0], gyroBias[1], gyroBias[2]);
+	//printf("AccelBias: %d %d %d\n",accelBias[0], accelBias[1], accelBias[2]);
 	
 	
 	
@@ -245,7 +263,7 @@ void setupSensor(Twi* interface) {
 		.z = 0
 	};
 	current_position = position;
-	last_sensor_tick = ticks;
+	last_sensor_tick = currentTicks;
 	gyroSumX = gyroSumY = gyroSumZ = 0;
 	accelSumX = accelSumY =	accelSumZ = 0;
 	sumCounter = 0;
@@ -253,7 +271,6 @@ void setupSensor(Twi* interface) {
     //MPU6050_INT_STATUS
     //MPU6050_PWR_MGMT_1 CLOCK SELECTION?
 	delay_ms(200);
-	printf("Sensor Setup completed.\n");
 }
 
 uint8_t getSensorData(accel_t_gyro_union* accel_t_gyro) {
@@ -303,7 +320,11 @@ void getPosition(position_t* position) {
 }
 uint32_t printCounter_sensor = SAMPLES_PER_SECOND;
 
-uint8_t updateOrientation(void) {
+uint8_t updateOrientation() {
+	if(sensor_data_ready == 0) {
+		return 0;
+	}
+	sensor_data_ready = 0;
 	accel_t_gyro_union accel_t_gyro;
 	orientation_t accelOrientation, gyroOrientation, dGyroOrientation;
 	if(getSensorData(&accel_t_gyro)) {
@@ -325,7 +346,7 @@ uint8_t updateOrientation(void) {
 		dGyroOrientation.az = (float)(gyroSumZ)/(DGS_250);
 		
 		float elapsed_time = elapsed_time_s(last_sensor_tick);
-		last_sensor_tick = ticks;
+		last_sensor_tick = current_ticks();
 		gyroOrientation.ax = current_orientation.ax + dGyroOrientation.ax*elapsed_time/(sumCounter);
 		gyroOrientation.ay = current_orientation.ay + dGyroOrientation.ay*elapsed_time/(sumCounter);
 		gyroOrientation.az = current_orientation.az + dGyroOrientation.az*elapsed_time/(sumCounter);
@@ -510,4 +531,12 @@ void sensorAxisTest(void) {;
         delay(333);
     }
     pause();*/
+}
+
+void onSensorDataReady(uint32_t arg0, uint32_t arg1) {
+	sensor_data_ready = 1;
+}
+
+uint8_t is_sensor_alive(void) {
+	return elapsed_time_ms(last_sensor_tick) < 1000;
 }

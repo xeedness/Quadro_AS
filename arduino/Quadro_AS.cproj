@@ -554,16 +554,34 @@
     <Compile Include="src\base85.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\commander.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\commander.h">
+    <Compile Include="src\config.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\log.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\log.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\message_types.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\state_machine.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\state_machine.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\status_display.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\status_display.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\timer.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\timer.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\uart_bridge.c">

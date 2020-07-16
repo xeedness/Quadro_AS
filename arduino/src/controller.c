@@ -4,136 +4,152 @@
  * Created: 27.10.2018 10:46:17
  *  Author: xeedn
  */ 
+#include <string.h>
+#include "timer.h"
 #include "controller.h"
 #include "i2c.h"
 #include "pid.h"
 #include "esc.h"
+#include "config.h"
+#include "uart_bridge.h"
+#include "message_types.h"
+#include "state_machine.h"
 
-void setup_controller(Twi* interface) {
-	printf("Controller setup...\n");
-	controller_interface = interface;
-	openI2CClient(controller_interface, SLAVE_ADDRESS, &on_receive);
-	printf("Controller setup done.\n");
-	ticks = 0;
-	last_measure = 0;
-	last_control_ticks = 0;
-	address = 6;
-	valid = 0;
-	invalid = 0;
+uint8_t request_status[256] = {0};
+uint32_t last_alive_ticks;
+
+void setup_controller(void) {
 }
 
-void on_receive(uint8_t* buffer, uint16_t count) {
-	//printf("Received a count of %d\n", count);
-	if(count > 0) {
-		//printf("Received: '");
-		//for(uint32_t i=0; i<count;i++) {
-			//printf("%d ", buffer[i]);
-		//}
-		//printf("'\n");
+bool execute_command(uint8_t cmd, uint8_t* payload)
+{
+	switch (cmd)
+	{
+		case MSG_INIT:
+		{
+			handle_init(payload);
+			return true;
+		}
+		case MSG_ALIVE:
+		{
+			handle_alive();
+			return true;
+		}
+		case MSG_START:
+		{
+			handle_start();
+			return true;
+		}
+		case MSG_STOP:
+		{
+			handle_stop();
+			return true;
+		}
+		case MSG_THRUST:
+			handle_thrust(*(float*)(payload));
+			return true;
 		
-		int16_t values[6];
-		for(int i=0;i<6 && (i+1)*2 < count;i++) {
-			values[i] = ((buffer[1+i*2] << 8) | buffer[2+i*2]);
+		default:
+		{
+			return false;
 		}
-		if(buffer[0] == 0 && count == 7) {
-			float ay = (float)(values[0])/MAX_VALUE;
-			float ax = (float)(values[1])/MAX_VALUE;
-			float th = (float)(values[2])/MAX_VALUE;
-			//printf("Decoded Control: %d %d %d\n", (int)(ax*100), (int)(ay*100), (int)(th*100));
-			//Always apply target angles
-			set_target(ax*50,ay*50);
-			handleThrust(th);
-		} else if(buffer[0] == 1 && count == 7) {
-			float p = ((float)(values[0])/MAX_VALUE)*10.0f;
-			float i = ((float)(values[1])/MAX_VALUE)*10.0f;
-			float d = ((float)(values[2])/MAX_VALUE)*10.0f;
-			printf("Decoded PID: %d %d %d\n", (int)(p*1000), (int)(i*1000), (int)(d*1000));
-			set_constants(p,i,d);
-		} else if(buffer[0] == 2 && count == 7) {
-			printf("Decoded Motor: %d %d %d\n", values[0], values[1], values[2]);
-			adjustMotorValues(values[0], values[1], values[2]);
-		} else if(buffer[0] == 3 && count == 13) {
-			float p = ((float)(values[0])/MAX_VALUE)*10.0f;
-			float i = ((float)(values[1])/MAX_VALUE)*10.0f;
-			float d = ((float)(values[2])/MAX_VALUE)*10.0f;
-			//printf("Decoded PID: %d %d %d\n", (int)(p*1000), (int)(i*1000), (int)(d*1000));
-			//printf("Decoded Motor: %d %d %d\n", values[3], values[4], values[5]);
-			set_constants(p,i,d);
-			adjustMotorValues(values[3], values[4], values[5]);
-		} else if(buffer[0] == 10 && count == 1) {
-			//printf("Start received.\n");
-			handleStart();
-		} else if(buffer[0] == 11 && count == 1) {
-			//printf("Landing received.\n");
-			handleLanding();
-		} else if(buffer[0] == 12 && count == 1) {
-			//printf("Shutdown received.\n");
-			handleShutdown();
-		} else {
-			//printf("Could not decode message.\n");
-			invalid++;
-			return;
-		}
-		last_control_ticks = ticks;
-		valid++;
 	}
 }
 
-void adjustMotorValues(uint16_t hover, uint16_t max, uint16_t landing) {
-	HoverSpeed = hover;
-	MaxSpeed = max;
-	LandingSpeed = landing;
+void handle_init(uint8_t* payload) {
+	
+	memcpy((char*)&pid_config, (char*)payload, sizeof(pid_config_t));
+	memcpy((char*)&log_config, (char*)(payload) + sizeof(pid_config_t), sizeof(log_config_t));	
+	memcpy((char*)&esc_config, (char*)(payload) + sizeof(pid_config_t) +  + sizeof(log_config_t), sizeof(esc_config_t));
+	
+	
+	printf("Received configuration.");
+	printf("PID Config: \n");
+	printf(" PID-Factor: %.5f\n", pid_config.pid_factor);
+	printf(" P-Factor: %.5f\n", pid_config.pid_p_factor);
+	printf(" I-Factor: %.5f\n", pid_config.pid_i_factor);
+	printf(" D-Factor: %.5f\n", pid_config.pid_d_factor);
+	printf(" Interval-MS: %lu\n", pid_config.update_interval_ms);	
+	
+	printf("Log Config: \n");
+	printf(" Orientation Enabled: %u\n", log_config.orientation_enabled);
+	printf(" PID Enabled: %u\n", log_config.pid_enabled);
+	printf(" Speed Enabled: %u\n", log_config.speed_enabled);
+	printf(" Interval-MS: %lu\n", log_config.log_interval_ms);
+	
+	printf("ESC Config: \n");
+	printf(" Landing-Speed: %u\n", esc_config.landing_speed);
+	printf(" Hover-Speed: %u\n", esc_config.hover_speed);
+	printf(" Max-Speed: %u\n", esc_config.max_speed);
+	printf(" Min-Speed: %u\n", esc_config.min_speed);
+	printf(" Interval-MS: %lu\n", esc_config.update_interval_ms);
+	
+	request_status[MSG_INIT] = 1;
 }
 
-void handleStart(void) {
-	if(state == IDLE_STATE || state == SHUTDOWN_STATE) {
-		next_state = RUN_STATE;	
+void  handle_alive(void) {
+	last_alive_ticks = current_ticks();
+}
+
+
+void handle_start(void) {
+	if(current_state == IDLE || current_state == SHUTDOWN) {
+		next_state = RUNNING;	
 	}
 }
-
-void handleLanding(void) {
-	if(state == RUN_STATE) {
-		next_state = LANDING_STATE;
-	}
-}
-
-void handleShutdown(void) {
-	next_state = SHUTDOWN_STATE;
+void handle_stop(void) {
+	next_state = SHUTDOWN;
 }
 
 
-void handleThrust(float th) {
-	if(state == RUN_STATE) {
-		int maxIncrease = MaxSpeed - HoverSpeed;
-		int maxDecrease = HoverSpeed - MinSpeed;
+void handle_thrust(float th) {
+	if(current_state == RUNNING) {
+		int maxIncrease = esc_config.max_speed - esc_config.hover_speed;
+		int maxDecrease = esc_config.hover_speed - esc_config.min_speed;
 		if(th > 0) {
-			BaseSpeed = HoverSpeed + (maxIncrease * th);
+			current_base_speed = esc_config.hover_speed + (maxIncrease * th);
 		} else {
 			//th < 0, maxDecrease > 0 -> decrease
-			BaseSpeed = HoverSpeed + (maxDecrease * th);
+			current_base_speed = esc_config.hover_speed + (maxDecrease * th);
 		}
 		//printf("New BaseSpeed: %d\n", BaseSpeed);
-	} else if (state == LANDING_STATE) {
-		int maxIncrease = MaxSpeed - CurrentLandingSpeed;
-		int maxDecrease = CurrentLandingSpeed - MinSpeed;
-		if(th > 0) {
-			BaseSpeed = CurrentLandingSpeed + (maxIncrease * th);
-			} else {
-			//th < 0, maxDecrease > 0 -> decrease
-			BaseSpeed = CurrentLandingSpeed + (maxDecrease * th);
-		}
 	}
 }
 
-
-uint32_t elapsed_time_us(uint32_t past) {
-	return (ticks-past)*1000;
+void update_speed(void) {
+	float pid_x = pid_values.x;
+	float pid_y = pid_values.y;
+	
+	//Sum PID values with negated values for right and rear respectively
+	speed.front_left_speed = current_base_speed + (-pid_x/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW));
+	speed.front_right_speed = current_base_speed + (-pid_x/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW));
+	speed.rear_left_speed = current_base_speed + (pid_x/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW));
+	speed.rear_right_speed = current_base_speed + (pid_x/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW));
+	
+	speed.front_left_speed = min(speed.front_left_speed, esc_config.max_speed);
+	speed.front_right_speed = min(speed.front_right_speed, esc_config.max_speed);
+	speed.rear_left_speed = min(speed.rear_left_speed, esc_config.max_speed);
+	speed.rear_right_speed = min(speed.rear_right_speed, esc_config.max_speed);
+	
+	speed.front_left_speed = max(speed.front_left_speed, esc_config.min_speed);
+	speed.front_right_speed = max(speed.front_right_speed, esc_config.min_speed);
+	speed.rear_left_speed = max(speed.rear_left_speed, esc_config.min_speed);
+	speed.rear_right_speed = max(speed.rear_right_speed, esc_config.min_speed);
+	
+	writeSpeed();
 }
 
-uint32_t elapsed_time_ms(uint32_t past) {
-	return (ticks-past);
+uint8_t is_controller_alive(void) {
+	return elapsed_time_ms(last_alive_ticks) < 1000;
 }
 
-float elapsed_time_s(uint32_t past) {
-	return (float)(ticks-past)/1000.0f;
+uint8_t request_init(uint8_t is_repeat) {
+	if(!is_repeat) {
+		request_status[MSG_INIT] = 0;
+	}
+	return uart_bridge_send_request(MSG_INIT);
+}
+
+uint8_t request_init_status(void) {
+	return request_status[MSG_INIT];
 }

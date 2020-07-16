@@ -11,49 +11,20 @@
 
 #include <asf.h>
 
-#define SLAVE_ADDRESS 0x62
-#define MAX_VALUE 32768.0f
+void setup_controller(void);
+bool execute_command(uint8_t cmd, uint8_t* payload);
 
-#define IDLE_STATE 0
-#define RUN_STATE 1
-#define LANDING_STATE 2
-#define SHUTDOWN_STATE 3
-//#define STARTUP_TIME 5000
-//#define RUN_TIME 10000
-#define LANDING_TIME 10000
-#define PID_FACTOR 0.5f
-int state;
-int next_state;
-uint32_t valid;
-uint32_t invalid;
+void handle_init(uint8_t* payload);
+void handle_alive(void);
+void handle_start(void);
+void handle_stop(void);
+void handle_thrust(float th);
 
-volatile uint32_t last_control_ticks;
-volatile uint32_t ticks; //1 tick == 10 us
-volatile uint32_t last_measure;
+void update_speed(void);
 
-uint8_t address;
-Twi* controller_interface;
+uint8_t request_init(uint8_t is_repeat);
+uint8_t request_init_status(void);
 
-uint16_t LandingSpeed;
-uint16_t HoverSpeed;
-uint16_t MaxSpeed;
-uint16_t MinSpeed;
-uint16_t CurrentSpeed;
-uint16_t CurrentLandingSpeed;
-uint16_t BaseSpeed;
-
-void setup_controller(Twi* interface);
-void on_receive(uint8_t*, uint16_t);
-void adjustMotorValues(uint16_t hover, uint16_t max, uint16_t landing);
-void handleThrust(float th);
-void handleStart(void);
-void handleLanding(void);
-void handleShutdown(void);
-
-uint32_t elapsed_time_us(uint32_t past);
-uint32_t elapsed_time_ms(uint32_t past);
-float elapsed_time_s(uint32_t past);
-
-
+uint8_t is_controller_alive(void);
 
 #endif /* CONTROLLER_H_ */

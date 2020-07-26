@@ -1,7 +1,7 @@
 import socket
 import time
 from base64 import b85encode
-HOST = '192.168.2.116'
+HOST = '192.168.4.1'
 PORT = 12345
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

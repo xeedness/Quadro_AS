@@ -10,12 +10,18 @@ import Recorder
 import argparse
 import Controller
 import Config
+import ClientSocket
 from tkinter import *
-HOST = '192.168.2.116'
-PORT_TX = 12346        
-PORT_RX = 12345        
+#HOST = '192.168.2.116'
+#PORT_TX = 12346        
+#PORT_RX = 12345        
+
+HOST = '192.168.4.1'
+PORT = 12345     
 
 if __name__ == "__main__":
+
+
 
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--mode', metavar='m', type=int,
@@ -27,8 +33,8 @@ if __name__ == "__main__":
 
     root = tk.Tk()
     root.geometry("1280x900+0+0")
-    
-    sender = Sender.Sender(HOST, PORT_TX)
+    client_socket = ClientSocket.ClientSocket(HOST, PORT)    
+    sender = Sender.Sender(client_socket)
 
     plot_frame1 = tk.Frame(root)
     # plot_frame.pack_propagate(0)
@@ -54,9 +60,9 @@ if __name__ == "__main__":
 
     if args.mode == 0:
         recorder.start_recording()
-        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, recorder, controller)
+        receiver = Receiver.Receiver(client_socket, plot_handler, recorder, controller)
     elif args.mode == 1:
-        receiver = Receiver.Receiver(HOST, PORT_RX, plot_handler, None, controller)
+        receiver = Receiver.Receiver(client_socket, plot_handler, None, controller)
         recorder.playback_recording(receiver, args.recordpath)
     else:
         print("unrecognized mode")

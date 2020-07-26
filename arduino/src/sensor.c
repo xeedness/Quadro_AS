@@ -402,9 +402,15 @@ uint8_t updateOrientation() {
 		if(xy > 0) {
 			accelOrientation.ay *= -1;
 		}
-		current_orientation.ax = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ax) + sensor_config.acceleration_weight*accelOrientation.ax;
-		current_orientation.ay = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ay) + sensor_config.acceleration_weight*accelOrientation.ay;
-		current_orientation.az = gyroOrientation.az;
+		if(sensor_config.enabled) {
+			current_orientation.ax = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ax) + sensor_config.acceleration_weight*accelOrientation.ax;
+			current_orientation.ay = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ay) + sensor_config.acceleration_weight*accelOrientation.ay;
+			current_orientation.az = gyroOrientation.az;
+		} else {
+			current_orientation.ax = 0;
+			current_orientation.ay = 0;
+			current_orientation.az = 0;
+		}
 		
 		//Update position
 		//current_position.x += (float)accelSumX*G_1_MPS/G_1/1000.0f;

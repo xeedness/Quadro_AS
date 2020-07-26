@@ -26,6 +26,7 @@ class Config():
         self.log_interval = 50
 
         self.acceleration_weight = 0.01
+        self.sensor_enabled = 1
 
     def load_config(self):
         if os.path.exists(self.filepath):
@@ -50,6 +51,7 @@ class Config():
             self.log_interval = int(config['DEFAULT']['Log-Interval'])
 
             self.acceleration_weight = float(config['DEFAULT']['Acceleration-Weight'])
+            self.sensor_enabled = int(config['DEFAULT']['Sensor-Enabled'])
 
             print("Read Config")
 
@@ -76,6 +78,7 @@ class Config():
         config['DEFAULT']['Log-Interval'] = str(self.log_interval)
 
         config['DEFAULT']['Acceleration-Weight'] = str(self.acceleration_weight)
+        config['DEFAULT']['Sensor-Enabled'] = str(self.sensor_enabled)
 
         with open(self.filepath, 'w') as configfile:
             config.write(configfile)

@@ -14,12 +14,6 @@
 void setup_controller(void);
 bool execute_command(uint8_t cmd, uint8_t* payload);
 
-void handle_init(uint8_t* payload);
-void handle_alive(void);
-void handle_start(void);
-void handle_stop(void);
-void handle_thrust(float th);
-
 void update_speed(void);
 
 uint8_t request_init(uint8_t is_repeat);

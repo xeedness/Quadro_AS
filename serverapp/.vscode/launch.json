@@ -21,6 +21,7 @@
         {
             "name": "PyHost Default Host",
             "type": "python",
+            "justMyCode":false,
             "request": "launch",
             "program": "pyHost.py",
             "console": "integratedTerminal",

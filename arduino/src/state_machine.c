@@ -22,7 +22,7 @@ uint32_t last_speed_ticks = 0;
 
 static const uint32_t state_update_intervals_ms[END] = {
 	2000, // AWAIT_INIT
-	50, // IDLE
+	1000, // IDLE
 	80, // RUNNING
 	80, // LANDING
 	0 // SHUTDOWN

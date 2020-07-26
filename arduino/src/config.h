@@ -15,6 +15,7 @@
 
 typedef struct sensor_config_s{
 	float acceleration_weight;
+	uint8_t enabled;
 } sensor_config_t;
 
 typedef struct pid_config_s{

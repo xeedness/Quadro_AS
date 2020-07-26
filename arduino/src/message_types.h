@@ -22,6 +22,8 @@
 #define MSG_LOG_PID (46)
 #define MSG_LOG_THRUST (47)
 
+#define MSG_CONTROL (48)
+
 
 
 #endif /* MESSAGE_TYPES_H_ */

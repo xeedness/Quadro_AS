@@ -18,6 +18,18 @@
 uint8_t request_status[256] = {0};
 uint32_t last_alive_ticks;
 
+float thrust = 0;
+float target_x = 0;
+float target_y = 0;
+
+static void handle_init(uint8_t* payload);
+static void handle_alive(void);
+static void handle_start(void);
+static void handle_stop(void);
+static void handle_thrust(float th);
+static void handle_controls(float* values);
+static void apply_thrust(float thrust);
+
 void setup_controller(void) {
 }
 
@@ -48,9 +60,13 @@ bool execute_command(uint8_t cmd, uint8_t* payload)
 		case MSG_THRUST:
 			handle_thrust(*(float*)(payload));
 			return true;
+		case MSG_CONTROL:
+			handle_controls((float*)(payload));
+			return true;
 		
 		default:
 		{
+			printf("Received invalid command: %d\n", cmd);
 			return false;
 		}
 	}
@@ -63,8 +79,8 @@ void handle_init(uint8_t* payload) {
 	memcpy((char*)&esc_config, (char*)(payload) + sizeof(pid_config_t)  + sizeof(log_config_t), sizeof(esc_config_t));
 	memcpy((char*)&sensor_config, (char*)(payload) + sizeof(pid_config_t)  + sizeof(log_config_t) + sizeof(esc_config_t), sizeof(sensor_config_t));
 	
-	
-	printf("Received configuration.");
+	// TODO Consider not doing this for better performance
+	/*printf("Received configuration.");
 	printf("PID Config: \n");
 	printf(" PID-Factor: %.5f\n", pid_config.pid_factor);
 	printf(" P-Factor: %.5f\n", pid_config.pid_p_factor);
@@ -87,6 +103,7 @@ void handle_init(uint8_t* payload) {
 	
 	printf("Sensor Config: \n");
 	printf(" Acceleration Weight: %.5f\n", sensor_config.acceleration_weight);
+	printf(" Enabled: %u\n", sensor_config.enabled);*/
 	
 	request_status[MSG_INIT] = 1;
 }
@@ -107,14 +124,30 @@ void handle_stop(void) {
 
 
 void handle_thrust(float th) {
+	thrust = th;
+	apply_thrust(thrust);
+}
+
+void handle_controls(float* values) {
+	// TODO These values should probably be stored elsewhere
+	thrust = values[0];
+	target_x = values[1];
+	target_y = values[2];
+	apply_thrust(thrust);
+	set_target(target_x, target_y);
+	// TODO Consider not doing this for better performance
+	//printf("Controls: T %.5f X %.5f Y %.5f\n", thrust, target_x, target_y);
+}
+
+void apply_thrust(float thrust) {
 	if(current_state == RUNNING) {
 		int maxIncrease = esc_config.max_speed - esc_config.hover_speed;
 		int maxDecrease = esc_config.hover_speed - esc_config.min_speed;
-		if(th > 0) {
-			current_base_speed = esc_config.hover_speed + (maxIncrease * th);
+		if(thrust > 0) {
+			current_base_speed = esc_config.hover_speed + (maxIncrease * thrust);
 		} else {
 			//th < 0, maxDecrease > 0 -> decrease
-			current_base_speed = esc_config.hover_speed + (maxDecrease * th);
+			current_base_speed = esc_config.hover_speed + (maxDecrease * thrust);
 		}
 		//printf("New BaseSpeed: %d\n", BaseSpeed);
 	}
@@ -139,6 +172,9 @@ void update_speed(void) {
 	speed.front_right_speed = max(speed.front_right_speed, esc_config.min_speed);
 	speed.rear_left_speed = max(speed.rear_left_speed, esc_config.min_speed);
 	speed.rear_right_speed = max(speed.rear_right_speed, esc_config.min_speed);
+	
+	
+	//printf("Speed: %d %.2f %.2f %d %d %d %d \n", current_base_speed, pid_x, pid_y, speed.front_left_speed, speed.front_right_speed, speed.rear_left_speed, speed.rear_right_speed);
 	
 	writeSpeed();
 }

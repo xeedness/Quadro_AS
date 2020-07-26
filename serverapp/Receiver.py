@@ -6,47 +6,37 @@ import socket
 from PlotHandler import PlotHandler
 from Recorder import Recorder
 from Controller import Controller
+from ClientSocket import ClientSocket
 import MessageTypes
+import time
 
 START_BYTE = 2
 END_BYTE = 3
 
 class Receiver():
 
-    def __init__(self, host, port, plot_handler: PlotHandler, recorder: Recorder, controller: Controller):
-        self.host = host
-        self.port = port
+    def __init__(self, client_socket: ClientSocket, plot_handler: PlotHandler, recorder: Recorder, controller: Controller):
+        self.client_socket = client_socket
         self.plot_handler = plot_handler
         self.recorder = recorder
         self.controller = controller
-        self.start_listen_thread()
+        self.start_recv_thread()
 
-    def start_listen_thread(self):
-        self.thread = threading.Thread(target=self.listen_thread_func, args=())
+    def start_recv_thread(self):
+        self.thread = threading.Thread(target=self.recv_thread_func, args=())
         self.thread.start()
-
-    def start_recv_thread(self, conn):
-        self.thread = threading.Thread(target=self.recv_thread_func, args=[conn])
-        self.thread.start()
-
-    def listen_thread_func(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            print("Accepting RX on "+str(self.port))
-            s.bind((self.host, self.port))
-            s.listen()
-            while(True):
-                conn, addr = s.accept()
-                print('RX Connected to ', addr)
-                self.start_recv_thread(conn)
         
-    def recv_thread_func(self, conn):
+    def recv_thread_func(self):
         buffer = bytearray()
         while(1):              
-            byte = conn.recv(1)
-            if(self.append_byte(byte[0], buffer)):
-                self.receive(buffer[1:-1])
-                del buffer[:]
-        print('Connection aborted.')      
+            byte = self.client_socket.recv(1)
+            if byte == b'':
+                # Sleep a little to not bombard the client socket with recv calls
+                time.sleep(0.1)
+            else:
+                if(self.append_byte(byte[0], buffer)):
+                    self.receive(buffer[1:-1])
+                    del buffer[:]      
            
     def append_byte(self, byte, buffer):
         if byte == START_BYTE and len(buffer) > 0:

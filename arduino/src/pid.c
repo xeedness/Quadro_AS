@@ -8,56 +8,107 @@
 #include "pid.h"
 #include "timer.h"
 #include "config.h"
+#include "call_counter.h"
 
-pid_values_t pid_values = {0, 0};
+pid_values_t pid_angle_values = {0, 0};
+pid_values_t pid_rate_values = {0, 0};
+
+float last_angle_error_x;
+float last_angle_error_y;
+float last_rate_error_x;
+float last_rate_error_y;
+float i_value_angle_x;
+float i_value_angle_y;
+float i_value_rate_x;
+float i_value_rate_y;
+uint32_t last_pid_tick;
+float target_angle_x, target_angle_y;
+
 
  void pid_init(void) {
 	 //pid_values = {0, 0};
-	 target_x = target_y = 0;
-	 i_value_x = i_value_y = 0;
-	 last_error_x = last_error_y = 0;
-	 last_angle_tick = current_ticks();
+	 target_angle_x = target_angle_y = 0;
+	 i_value_angle_x = i_value_angle_y = 0;
+	 i_value_rate_x = i_value_rate_y = 0;
+	 last_angle_error_x = last_angle_error_y = 0;
+	 last_rate_error_x = last_rate_error_y = 0;
+	 last_pid_tick = current_ticks();
  }
  
- void feed_angles(float angleX, float angleY) {
+ static void pid_angle_step(float x_angle, float y_angle, float elapsed_seconds) {
 	 float error_x, p_value_x, d_value_x;
 	 float error_y, p_value_y, d_value_y;
 	 
-	 float elapsed_time = elapsed_time_s(last_angle_tick);
-	 last_angle_tick = current_ticks();
-	 if(elapsed_time > 1.0f) {
-		 elapsed_time = 1.0f;
-	 }
-	 //printf("Elapsed Time: %.5f\n", elapsed_time);
-	 
 	 //Calc error
-	 error_x = angleX-target_x;
-	 error_y = angleY-target_y; 
+	 error_x = target_angle_x-x_angle;
+	 error_y = target_angle_y-y_angle;
 	 
 	 // P Value is the error directly
 	 p_value_x = error_x;
 	 p_value_y = error_y;
 	 
 	 // I Value is the discrete integral (sum) of the product of error and time
-	 i_value_x += elapsed_time * error_x;
-	 i_value_y += elapsed_time * error_y;	 
+	 i_value_angle_x += elapsed_seconds * error_x;
+	 i_value_angle_y += elapsed_seconds * error_y;
 	 
 	 // D Value is the change of error
-	 d_value_x = (error_x-last_error_x)/elapsed_time;
-	 d_value_y = (error_y-last_error_y)/elapsed_time;
+	 d_value_x = (error_x-last_angle_error_x)/elapsed_seconds;
+	 d_value_y = (error_y-last_angle_error_y)/elapsed_seconds;
 	 
 	 // Generate pid value by weighted sum
-	 pid_values.x = pid_config.pid_p_factor*p_value_x+pid_config.pid_i_factor*i_value_x+pid_config.pid_d_factor*d_value_x;
-	 pid_values.y = pid_config.pid_p_factor*p_value_y+pid_config.pid_i_factor*i_value_y+pid_config.pid_d_factor*d_value_y; 
+	 pid_angle_values.x = pid_config.pid_angle_p_factor*p_value_x+pid_config.pid_angle_i_factor*i_value_angle_x+pid_config.pid_angle_d_factor*d_value_x;
+	 pid_angle_values.y = pid_config.pid_angle_p_factor*p_value_y+pid_config.pid_angle_i_factor*i_value_angle_y+pid_config.pid_angle_d_factor*d_value_y;
 	 
 	 // Remember the last error to calc next values
-	 last_error_x = error_x;
-	 last_error_y = error_y;
+	 last_angle_error_x = error_x;
+	 last_angle_error_y = error_y;
+ }
+ 
+ static void pid_rate_step(float x_rate, float y_rate, float elapsed_seconds) {
+	 float error_x, p_value_x, d_value_x;
+	 float error_y, p_value_y, d_value_y;
+	 
+	 //Calc error // Sign swap, because of the way motors a controlled
+	 error_x = x_rate-pid_angle_values.x;
+	 error_y = y_rate-pid_angle_values.y;
+
+	 // P Value is the error directly
+	 p_value_x = error_x;
+	 p_value_y = error_y;
+	 
+	 // I Value is the discrete integral (sum) of the product of error and time
+	 i_value_rate_x += elapsed_seconds * error_x;
+	 i_value_rate_y += elapsed_seconds * error_y;
+	 
+	 // D Value is the change of error
+	 d_value_x = (error_x-last_rate_error_x)/elapsed_seconds;
+	 d_value_y = (error_y-last_rate_error_y)/elapsed_seconds;
+	 
+	 // Generate pid value by weighted sum
+	 pid_rate_values.x = pid_config.pid_rate_p_factor*p_value_x+pid_config.pid_rate_i_factor*i_value_rate_x+pid_config.pid_rate_d_factor*d_value_x;
+	 pid_rate_values.y = pid_config.pid_rate_p_factor*p_value_y+pid_config.pid_rate_i_factor*i_value_rate_y+pid_config.pid_rate_d_factor*d_value_y;
+	 
+	 // Remember the last error to calc next values
+	 last_rate_error_x = error_x;
+	 last_rate_error_y = error_y;
+ }
+ 
+ void pid_step(float x_angle, float y_angle, float x_rate, float y_rate) {
+	 float elapsed_seconds = elapsed_time_s(last_pid_tick);
+	 last_pid_tick = current_ticks();
+	 if(elapsed_seconds > 1.0f) {
+		 elapsed_seconds = 1.0f;
+	 }
+	 if(elapsed_seconds > 0) {
+		 pid_called();
+		 pid_angle_step(x_angle, y_angle, elapsed_seconds);
+		 pid_rate_step(x_rate, y_rate, elapsed_seconds);
+	 }
  }
  
  void set_target(float angleX, float angleY) {
-	 target_x = angleX;
-	 target_y = angleY;
+	 target_angle_x = angleX;
+	 target_angle_y = angleY;
  }
  
  

@@ -548,19 +548,52 @@
     <Folder Include="src\config\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\altimeter.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\altimeter.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\base85.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\base85.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\bmp3.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\bmp3.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\bmp3_defs.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\call_counter.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\call_counter.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\config.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\kalman.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\kalman.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\log.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\log.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\math_helpers.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\math_helpers.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\message_types.h">

@@ -18,6 +18,15 @@ bool log_orientation(orientation_t or)
 	return log_bytes(buf, or_length);
 }
 
+bool log_angular_velocity(angular_rate_t av)
+{
+	size_t av_length = sizeof(angular_rate_t) + 1;
+	uint8_t buf[av_length];
+	buf[0] = MSG_LOG_ANGULAR_VELOCITY;
+	memcpy(buf + 1,	(char*)&av.wx, sizeof(angular_rate_t));
+	return log_bytes(buf, av_length);
+}
+
 bool log_pid(pid_values_t pid_val)
 {
 	size_t pid_length = sizeof(pid_values_t) + 1;
@@ -34,4 +43,12 @@ bool log_thrust(speed_t spd) {
 	buf[0] = MSG_LOG_THRUST;
 	memcpy(buf + 1, (char*)&spd, sizeof(speed_t));	
 	return log_bytes(buf, thrust_length);
+}
+
+bool log_altimeter_data(altimeter_t altimeter_data) {
+	size_t length = sizeof(altimeter_t) + 1;
+	uint8_t buf[length];
+	buf[0] = MSG_LOG_ALTIMETER_DATA;
+	memcpy(buf + 1, (char*)&altimeter_data, sizeof(altimeter_t));
+	return log_bytes(buf, length);
 }

@@ -41,7 +41,8 @@ void (*twi0_data_received_callback)(uint8_t*, uint16_t);
 
 void TWI_EnableIt(Twi *pTwi, uint32_t sources);
 void TWI_DisableIt(Twi *pTwi, uint32_t sources);
-uint8_t sendPacket(Twi* twim, uint8_t slave_address, uint8_t address, uint8_t data, int length);
+uint8_t sendByte(Twi* twim, uint8_t slave_address, uint8_t address, uint8_t data);
+uint8_t sendPacket(Twi* twim, uint8_t slave_address, uint8_t address, uint8_t* data, int length);
 uint32_t receivePacket(Twi* twim, uint8_t slave_address, uint8_t address, void* data, uint32_t size);
 void openI2CServer(Twi* twim, uint32_t clock, uint8_t address);
 void openI2CClient(Twi* twim, uint8_t address, void (*recv_callback)(uint8_t*, uint16_t));

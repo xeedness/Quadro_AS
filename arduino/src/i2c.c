@@ -16,12 +16,16 @@ void TWI_DisableIt(Twi *pTwi, uint32_t sources)
     pTwi->TWI_IDR = sources;
 }
 
-uint8_t sendPacket(Twi* twim, uint8_t slave_address, uint8_t address, uint8_t data, int length) {
+uint8_t sendByte(Twi* twim, uint8_t slave_address, uint8_t address, uint8_t data) {
+	return sendPacket(twim, slave_address, address, &data, 1);
+}
+
+uint8_t sendPacket(Twi* twim, uint8_t slave_address, uint8_t address, uint8_t* data, int length) {
 	twi_package_t packet_write = {
 		.addr         = {address},      // TWI slave memory address data
 		.addr_length  = sizeof (uint8_t),    // TWI slave memory address data size
 		.chip         = slave_address,      // TWI slave bus address
-		.buffer       = (uint8_t *) &data, // transfer data source buffer
+		.buffer       = data, // transfer data source buffer
 		.length       = length  // transfer data size (bytes)
 	};
 	

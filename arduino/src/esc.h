@@ -7,15 +7,15 @@
 #define ESC_LOW 1000
 
 typedef struct speed {
-	uint16_t front_left_speed;
-	uint16_t front_right_speed;
-	uint16_t rear_left_speed;
-	uint16_t rear_right_speed;
+	float front_left_speed;
+	float front_right_speed;
+	float rear_left_speed;
+	float rear_right_speed;
 } speed_t;
 
 extern speed_t speed;
 
-uint16_t current_base_speed;
+float current_base_speed;
 
 // Core
 void setupESC(void);

@@ -6,7 +6,7 @@ PORT = 12345
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     server_address = (HOST, PORT)
-    
+    s.bind(('192.168.4.3', 0))
     s.connect(server_address)
     print('Connected')
     while(1):

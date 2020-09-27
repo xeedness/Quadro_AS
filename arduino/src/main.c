@@ -34,12 +34,15 @@
 #include <stdio.h>
 #include "esc.h"
 #include "sensor.h"
+#include "altimeter.h"
 #include "pid.h"
 #include "controller.h"
 #include "timer.h"
 #include "config.h"
 #include "state_machine.h"
 #include "status_display.h"
+#include "call_counter.h"
+#include "kalman.h"
 
 #include "log.h"
 #include "uart_bridge.h"
@@ -50,6 +53,7 @@ void set_default_config(void);
 void timed_pid_update(void);
 void timed_logging(void);
 void timed_speed_update(void);
+void throttle_calibration(void);
 
 pid_config_t pid_config;
 esc_config_t esc_config;
@@ -61,16 +65,45 @@ uint32_t last_log_ticks = 0;
 int main (void) {
     setup();
 	reset_state();
-	printf("Main Loop");
+	printf("Main Loop\n");
+	
+	
+	
+    
+    //axisTest();
+	
+	/*while(1) {
+		printf("Restart Please\n");
+		delay_s(5);
+	}*/
+	
+	uint32_t used_altitute_altimeter_tick = getAltitudeTick();
+	uint32_t used_altitute_sensor_tick = getSensorTick();
+	uint32_t used_attitute_sensor_tick = getSensorTick();
+	
+	uint32_t current_altimeter_tick = 0;
+	uint32_t current_sensor_tick = 0;
 	while(1) {
 		// Always update orientation, if data is available here. The goal should be to use every sensor update. Currently not sure if that is given
 		// Maybe consider moving this to the interrupt handler, since this is the most time critical thing
-		updateOrientation();
+		
+		current_altimeter_tick = getAltitudeTick();
+		current_sensor_tick = getSensorTick();
+		
+		if(current_altimeter_tick != used_altitute_altimeter_tick && current_sensor_tick != used_altitute_sensor_tick) {
+			updateKalmanAltitude();
+		}
+		
+		if(current_sensor_tick != used_attitute_sensor_tick) {
+			updateKalmanOrientation();
+		}		
 		
 		// Do all the time depending steps
 		//timed_pid_update();
 		timed_logging();
 		timed_state_tasks();
+		process_call_counters();
+		
 		
 		// Progress state machine
 		state_transition();
@@ -88,8 +121,6 @@ int main (void) {
     //axisTest();
 	
 }
-
-
 
 void setup(void) {
 	sysclk_init();
@@ -112,13 +143,20 @@ void setup(void) {
 	pid_init();
 	uart_bridge_init();
 	status_display_init();
+	
+	setupAltimeter(TWI0);
 	setupSensor(TWI1, current_ticks());
 	setupESC();
+	setupKalman();
+	
 	reset_state();
+	init_call_counter();
 	
 	last_log_ticks = current_ticks();
 	
 	delay_s(1);
+	
+	printf("Setup finished");
 }
 
 void SysTick_Handler(void)
@@ -134,15 +172,19 @@ void set_default_config(void) {
 	esc_config.min_speed = 1100;
 	esc_config.update_interval_ms = 20;
 	
-	pid_config.pid_factor = 0.5f;
-	pid_config.pid_p_factor = 0.3f;
-	pid_config.pid_i_factor = 0.01f;
-	pid_config.pid_d_factor = 0.01f;
+	pid_config.pid_amplify_factor = 0;
+	pid_config.pid_angle_p_factor = 0.3f;
+	pid_config.pid_angle_i_factor = 0.01f;
+	pid_config.pid_angle_d_factor = 0.01f;
+	pid_config.pid_rate_p_factor = 0.3f;
+	pid_config.pid_rate_i_factor = 0.01f;
+	pid_config.pid_rate_d_factor = 0.01f;
 	pid_config.update_interval_ms = 20;
 	
 	log_config.orientation_enabled = 0;
 	log_config.pid_enabled = 0;
 	log_config.speed_enabled = 0;
+	log_config.altitude_enabled = 0;
 	log_config.log_interval_ms = 50;
 	
 	sensor_config.acceleration_weight = 0.1f;
@@ -160,18 +202,33 @@ void set_default_config(void) {
 // Log PID values according to configured update interval
 void timed_logging(void) {
 	if(elapsed_time_ms(last_log_ticks) > log_config.log_interval_ms) {
-		if(log_config.orientation_enabled) {
-			log_orientation(current_orientation);
+		if(log_config.orientation_enabled) {			
+			orientation_t cur_orientation;
+			angular_rate_t cur_angular_velocity;
+			getKalmanOrientationEstimate(&cur_orientation, &cur_angular_velocity);
+			
+			// Substitute Z Orientation with z acceleration for debugging purposes
+			cur_orientation.ax /= DEG_TO_RAD_FACTOR;
+			cur_orientation.ay /= DEG_TO_RAD_FACTOR;
+			
+			log_orientation(cur_orientation);
+			log_angular_velocity(cur_angular_velocity);
 		}
 		
 		if(log_config.pid_enabled) {
-			//printf("PID Logging: %.2f %.2f\n", pid_values.x, pid_values.y);
-			log_pid(pid_values);
+			//printf("PID Logging: %.2f %.2f\n", pid_rate_values.x, pid_rate_values.y);
+			log_pid(pid_rate_values);
 		}
 		
 		if(log_config.speed_enabled) {
 			//printf("Speed Logging: %d %d %d %d\n", speed.front_left_speed, speed.front_right_speed, speed.rear_left_speed, speed.rear_right_speed);
 			log_thrust(speed);
+		}
+		
+		if(log_config.altitude_enabled) {
+			altimeter_t altimeter_data;
+			getKalmanAltituteEstimate(&altimeter_data);
+			log_altimeter_data(altimeter_data);
 		}
 		
 		last_log_ticks = current_ticks();

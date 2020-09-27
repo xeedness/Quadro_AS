@@ -4,9 +4,9 @@
 #include <asf.h>
 #include "sensor_definitions.h"
 
-#define SWAP_X
-#define SWAP_Y
-#define SWAP_Z
+//#define SWAP_X
+//#define SWAP_Y
+//#define SWAP_Z
 
 #define SAMPLES_PER_SECOND 100
 
@@ -19,6 +19,8 @@
 #define OFF_THRESH 1000
 #define LOW_THRESH 3000
 #define HIGH_THRESH 5000
+
+#define DEG_TO_RAD_FACTOR 0.01745f //PI / 180
 
 #define bit(b) (1UL << (b))
 
@@ -35,6 +37,10 @@ uint32_t sumCounter;
 int32_t gyroSumX, gyroSumY, gyroSumZ;
 int32_t accelSumX, accelSumY, accelSumZ;
 
+typedef struct angular_rate {
+	float wx, wy, wz;	
+} angular_rate_t;
+
 typedef struct orientation {
 	float ax, ay, az;
 } orientation_t;
@@ -43,17 +49,29 @@ typedef struct position{
 	float x, y, z;
 } position_t;
 
-orientation_t current_orientation;
-position_t current_position;
+typedef struct drone_speed {
+	float vx, vy, vz;	
+} drone_speed_t;
+
+typedef struct acceleration {
+	float ax, ay, az;
+} acceleration_t;
+
 uint32_t last_sensor_tick;
-uint8_t sensor_data_ready;
+
 
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias);
 void selfTest(float* destination);
 void setupSensor(Twi* interface, uint32_t currentTicks);
-uint8_t getSensorData(accel_t_gyro_union* accel_t_gyro);
-void getOrientation(orientation_t* orientation);
-void getPosition(position_t* position);
+uint8_t updateSensorData(void);
+
+void getAngleOffsets(float* x_offset, float* y_offset);
+void getRawAcceleration(float* ax, float* ay, float* az);
+void getAnglesOfRawAcceleration(float* x_dst, float* y_dst);
+void getRawValuesGyro(float* x_dst, float* y_dst, float* z_dst);
+float getG1(void);
+uint32_t getSensorTick(void);
+
 uint8_t updateOrientation(void);
 uint32_t getFifoSensorData(accel_gyro_union* accel_gyro, uint32_t max_count);
 void sensorAxisTest(void);

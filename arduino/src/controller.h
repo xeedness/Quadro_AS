@@ -13,7 +13,7 @@
 
 void setup_controller(void);
 bool execute_command(uint8_t cmd, uint8_t* payload);
-
+void relativeMax(float* dst, float* comparison);
 void update_speed(void);
 
 uint8_t request_init(uint8_t is_repeat);

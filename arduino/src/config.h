@@ -19,18 +19,22 @@ typedef struct sensor_config_s{
 } sensor_config_t;
 
 typedef struct pid_config_s{
-	float pid_factor;
-	float pid_p_factor;
-	float pid_i_factor;
-	float pid_d_factor;
+	float pid_amplify_factor;
+	float pid_angle_p_factor;
+	float pid_angle_i_factor;
+	float pid_angle_d_factor;
+	float pid_rate_p_factor;
+	float pid_rate_i_factor;
+	float pid_rate_d_factor;
 	uint32_t update_interval_ms;
 } pid_config_t;
 
 typedef struct esc_config_s {
-	uint16_t landing_speed;
-	uint16_t hover_speed;
-	uint16_t max_speed;
-	uint16_t min_speed;
+	float landing_speed;
+	float hover_speed;
+	float max_speed;
+	float min_speed;
+	float max_ratio;
 	uint32_t update_interval_ms;
 } esc_config_t;
 
@@ -38,6 +42,7 @@ typedef struct log_config_s {
 	uint8_t orientation_enabled;
 	uint8_t pid_enabled;
 	uint8_t speed_enabled;	
+	uint8_t altitude_enabled;
 	uint32_t log_interval_ms;
 } log_config_t;
 

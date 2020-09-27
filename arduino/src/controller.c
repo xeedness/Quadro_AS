@@ -14,6 +14,7 @@
 #include "uart_bridge.h"
 #include "message_types.h"
 #include "state_machine.h"
+#include "call_counter.h"
 
 uint8_t request_status[256] = {0};
 uint32_t last_alive_ticks;
@@ -80,30 +81,34 @@ void handle_init(uint8_t* payload) {
 	memcpy((char*)&sensor_config, (char*)(payload) + sizeof(pid_config_t)  + sizeof(log_config_t) + sizeof(esc_config_t), sizeof(sensor_config_t));
 	
 	// TODO Consider not doing this for better performance
-	/*printf("Received configuration.");
+	printf("Received configuration.");
 	printf("PID Config: \n");
-	printf(" PID-Factor: %.5f\n", pid_config.pid_factor);
-	printf(" P-Factor: %.5f\n", pid_config.pid_p_factor);
-	printf(" I-Factor: %.5f\n", pid_config.pid_i_factor);
-	printf(" D-Factor: %.5f\n", pid_config.pid_d_factor);
+	printf(" PID-Factor: %.5f\n", pid_config.pid_amplify_factor);
+	printf(" P-Factor: %.5f\n", pid_config.pid_angle_p_factor);
+	printf(" I-Factor: %.5f\n", pid_config.pid_angle_i_factor);
+	printf(" D-Factor: %.5f\n", pid_config.pid_angle_d_factor);
+	printf(" P-Factor: %.5f\n", pid_config.pid_rate_p_factor);
+	printf(" I-Factor: %.5f\n", pid_config.pid_rate_i_factor);
+	printf(" D-Factor: %.5f\n", pid_config.pid_rate_d_factor);
 	printf(" Interval-MS: %lu\n", pid_config.update_interval_ms);	
 	
 	printf("Log Config: \n");
 	printf(" Orientation Enabled: %u\n", log_config.orientation_enabled);
 	printf(" PID Enabled: %u\n", log_config.pid_enabled);
 	printf(" Speed Enabled: %u\n", log_config.speed_enabled);
+	printf(" Altitude Enabled: %u\n", log_config.altitude_enabled);
 	printf(" Interval-MS: %lu\n", log_config.log_interval_ms);
 	
 	printf("ESC Config: \n");
-	printf(" Landing-Speed: %u\n", esc_config.landing_speed);
-	printf(" Hover-Speed: %u\n", esc_config.hover_speed);
-	printf(" Max-Speed: %u\n", esc_config.max_speed);
-	printf(" Min-Speed: %u\n", esc_config.min_speed);
+	printf(" Landing-Speed: %.5f\n", esc_config.landing_speed);
+	printf(" Hover-Speed: %.5f\n", esc_config.hover_speed);
+	printf(" Max-Speed: %.5f\n", esc_config.max_speed);
+	printf(" Min-Speed: %.5f\n", esc_config.min_speed);
 	printf(" Interval-MS: %lu\n", esc_config.update_interval_ms);
 	
 	printf("Sensor Config: \n");
 	printf(" Acceleration Weight: %.5f\n", sensor_config.acceleration_weight);
-	printf(" Enabled: %u\n", sensor_config.enabled);*/
+	printf(" Enabled: %u\n", sensor_config.enabled);
 	
 	request_status[MSG_INIT] = 1;
 }
@@ -141,8 +146,8 @@ void handle_controls(float* values) {
 
 void apply_thrust(float thrust) {
 	if(current_state == RUNNING) {
-		int maxIncrease = esc_config.max_speed - esc_config.hover_speed;
-		int maxDecrease = esc_config.hover_speed - esc_config.min_speed;
+		float maxIncrease = esc_config.max_speed - esc_config.hover_speed;
+		float maxDecrease = esc_config.hover_speed - esc_config.min_speed;
 		if(thrust > 0) {
 			current_base_speed = esc_config.hover_speed + (maxIncrease * thrust);
 		} else {
@@ -153,16 +158,25 @@ void apply_thrust(float thrust) {
 	}
 }
 
+void relativeMax(float* dst, float* comparison) {
+	// Example rr = 0.1, ratio = 2, base = 0.25 : (0.25 - 0.1) * 2 + 0.25 = 0.55
+	if(*dst > *comparison) {
+		*dst = min(*dst, (current_base_speed - *comparison) * esc_config.max_ratio + current_base_speed);
+	}
+}
+
 void update_speed(void) {
-	float pid_x = pid_values.x;
-	float pid_y = pid_values.y;
-	
+	speed_called();
+	float pid_x = pid_rate_values.x;
+	float pid_y = pid_rate_values.y;
+		
 	//Sum PID values with negated values for right and rear respectively
-	speed.front_left_speed = current_base_speed + (-pid_x/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW));
-	speed.front_right_speed = current_base_speed + (-pid_x/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW));
-	speed.rear_left_speed = current_base_speed + (pid_x/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW)) + (-pid_y/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW));
-	speed.rear_right_speed = current_base_speed + (pid_x/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW)) + (pid_y/100.0f * pid_config.pid_factor * (ESC_HIGH-ESC_LOW));
+	speed.front_left_speed = current_base_speed + (-pid_x-pid_y) * pid_config.pid_amplify_factor;
+	speed.front_right_speed = current_base_speed + (-pid_x+pid_y) * pid_config.pid_amplify_factor;
+	speed.rear_left_speed = current_base_speed + (pid_x-pid_y) * pid_config.pid_amplify_factor;
+	speed.rear_right_speed = current_base_speed + (pid_x+pid_y) * pid_config.pid_amplify_factor;
 	
+	// Absolute MinMax
 	speed.front_left_speed = min(speed.front_left_speed, esc_config.max_speed);
 	speed.front_right_speed = min(speed.front_right_speed, esc_config.max_speed);
 	speed.rear_left_speed = min(speed.rear_left_speed, esc_config.max_speed);
@@ -173,8 +187,14 @@ void update_speed(void) {
 	speed.rear_left_speed = max(speed.rear_left_speed, esc_config.min_speed);
 	speed.rear_right_speed = max(speed.rear_right_speed, esc_config.min_speed);
 	
+	// Relative Max... 
+	relativeMax(&speed.front_left_speed, &speed.rear_right_speed);
+	relativeMax(&speed.front_right_speed, &speed.rear_left_speed);
+	relativeMax(&speed.rear_left_speed, &speed.front_right_speed);
+	relativeMax(&speed.rear_right_speed, &speed.front_left_speed);
 	
-	//printf("Speed: %d %.2f %.2f %d %d %d %d \n", current_base_speed, pid_x, pid_y, speed.front_left_speed, speed.front_right_speed, speed.rear_left_speed, speed.rear_right_speed);
+	
+	//printf("Speed: %.3f %.3f %.3f %.3f %.3f %.3f %.3f \n", current_base_speed, pid_x, pid_y, speed.front_left_speed, speed.front_right_speed, speed.rear_left_speed, speed.rear_right_speed);
 	
 	writeSpeed();
 }

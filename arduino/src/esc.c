@@ -8,6 +8,7 @@
 #include "esc.h"
 #include "asf.h"
 
+//! Array containing the throttle percentage (MIN_THROTTLE, MAX_THROTTLE)
 speed_t speed;
 
 void setupESC(void) {
@@ -29,6 +30,7 @@ void setupESC(void) {
 	
 	setCurrentBaseSpeed(1000);
 	minThrottle();
+	printf("ESC Setup done\n");
 }
 
 void setCurrentBaseSpeed(uint16_t base_speed) {
@@ -36,52 +38,60 @@ void setCurrentBaseSpeed(uint16_t base_speed) {
 }
 
 void minThrottle(void) {
-	speed.front_left_speed = speed.front_right_speed = speed.rear_left_speed = speed.rear_right_speed = ESC_LOW;
+	speed.front_left_speed = speed.front_right_speed = speed.rear_left_speed = speed.rear_right_speed = 0;
 	writeSpeed();
 }
 
 void maxThrottle(void) {
-	speed.front_left_speed = speed.front_right_speed = speed.rear_left_speed = speed.rear_right_speed = ESC_HIGH;
+	speed.front_left_speed = speed.front_right_speed = speed.rear_left_speed = speed.rear_right_speed = 1;
 	writeSpeed();
 }
 
 void writeSpeed(void) {
-	REG_PWM_CDTYUPD0 = speed.front_left_speed;
-	REG_PWM_CDTYUPD1 = speed.front_right_speed;
-	REG_PWM_CDTYUPD2 = speed.rear_right_speed;
-	REG_PWM_CDTYUPD3 = speed.rear_left_speed;
+	uint16_t fl = ESC_LOW + (ESC_HIGH-ESC_LOW) * speed.front_left_speed;
+	uint16_t fr = ESC_LOW + (ESC_HIGH-ESC_LOW) * speed.front_right_speed;
+	uint16_t rl = ESC_LOW + (ESC_HIGH-ESC_LOW) * speed.rear_left_speed;
+	uint16_t rr = ESC_LOW + (ESC_HIGH-ESC_LOW) * speed.rear_right_speed;
+	
+	REG_PWM_CDTYUPD0 = fl;
+	REG_PWM_CDTYUPD1 = fr;
+	REG_PWM_CDTYUPD2 = rl;
+	REG_PWM_CDTYUPD3 = rr;
+	//printf("Written Speed Values: %u %u %u %u\n", fl, fr, rl, rr);
 }
 
 
 void axisTest(void) {
-	minThrottle();
-	printf("Running Axis Test. Rdy?\n");
-	getchar();
-	printf("Spinning Left\n");
-	REG_PWM_CDTYUPD0 = REG_PWM_CDTYUPD3 = 1100;
-	getchar();
-	minThrottle();
+	while(1) {
+		minThrottle();
+		printf("Running Axis Test. Rdy?\n");
+		getchar();
+		printf("Spinning Left\n");
+		REG_PWM_CDTYUPD0 = REG_PWM_CDTYUPD2 = 1100;
+		getchar();
+		minThrottle();
 
-	getchar();
-	printf("Spinning Right\n");
-	REG_PWM_CDTYUPD1 = REG_PWM_CDTYUPD2 = 1100;
-	getchar();
-	minThrottle();
+		getchar();
+		printf("Spinning Right\n");
+		REG_PWM_CDTYUPD1 = REG_PWM_CDTYUPD3 = 1100;
+		getchar();
+		minThrottle();
 
-	getchar();
-	printf("Spinning Back\n");
-	REG_PWM_CDTYUPD2 = REG_PWM_CDTYUPD3 = 1100;
-	getchar();
-	minThrottle();
+		getchar();
+		printf("Spinning Back\n");
+		REG_PWM_CDTYUPD2 = REG_PWM_CDTYUPD3 = 1100;
+		getchar();
+		minThrottle();
 
-	getchar();
-	printf("Spinning Front\n");
-	REG_PWM_CDTYUPD0 = REG_PWM_CDTYUPD1 = 1100;
-	getchar();
-	minThrottle();
+		getchar();
+		printf("Spinning Front\n");
+		REG_PWM_CDTYUPD0 = REG_PWM_CDTYUPD1 = 1100;
+		getchar();
+		minThrottle();
 
-	printf("Axis Test done. Press any key to continue\n");
-	getchar();
+		printf("Axis Test done. Press any key to continue\n");
+		getchar();
+	}
 }
 
 void setupThrottleRange(void) {

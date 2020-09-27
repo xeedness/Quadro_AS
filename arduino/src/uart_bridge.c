@@ -28,7 +28,7 @@ void uart_bridge_init(void) {
 	
 	// Higher priority for control signals ?
 	usart_enable_interrupt(CONF_UART_CONTROL, UART_IER_RXRDY);
-	NVIC_SetPriority(USART0_IRQn, 2);
+	NVIC_SetPriority(USART0_IRQn, 1);
 	NVIC_EnableIRQ(USART0_IRQn);
 }
 

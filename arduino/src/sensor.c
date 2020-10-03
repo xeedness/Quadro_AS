@@ -11,27 +11,24 @@
 #include <math.h>
 #include "config.h"
 #include "call_counter.h"
-
-orientation_t current_orientation = {0,0,0};
-angular_rate_t current_angular_rate = {0,0,0};
-drone_speed_t current_speed = {0,0,0};
-acceleration_t current_acceleration = {0,0,0};
-position_t current_position = {0,0,0};
 	
 uint8_t sensor_data_ready = 0;
 
 accel_t_gyro_union accel_t_gyro;
 
-int x_bias = -1150;
-int y_bias = 200;
-int z_bias = -880;
-float x_scale = 0.99f;
+int x_bias = -1210; //-1150;
+int y_bias = 160;
+int z_bias = -887;
+float x_scale = 0.995f;//0.99f;
 float y_scale = 0.997f;
-float z_scale = 0.97f; //0.9752f;
+float z_scale = 0.971f; //0.9752f;
 
 float x_angle_offset;
 float y_angle_offset;
-float g1_biased;
+
+uint32_t last_sensor_tick;
+
+Twi* sensor_interface;
 
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	uint8_t data[12]; // data array to hold accelerometer and gyro x, y, z, data
@@ -64,7 +61,7 @@ void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_ACCEL_CONFIG, 0x00); // Set accelerometer full-scale to 2 g, maximum sensitivity
 	
 	//uint16_t  gyrosensitivity  = 131;   // = 131 LSB/degrees/sec
-	uint16_t  accelsensitivity = 16384;  // = 16384 LSB/g
+	//uint16_t  accelsensitivity = 16384;  // = 16384 LSB/g
 
 	// Configure FIFO to capture accelerometer and gyro data for bias calculation
 	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_USER_CTRL, 0x40);   // Enable FIFO
@@ -109,7 +106,7 @@ void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	
 	printf("Averaged Accel Values: %ld %ld %ld\n", accel_bias[0], accel_bias[1], accel_bias[2]);
 	double nx, ny, nz;
-	g1_biased = sqrt((double)(accel_bias[0]*accel_bias[0] + accel_bias[1]*accel_bias[1] + accel_bias[2]*accel_bias[2]));
+	float g1_biased = sqrt((double)(accel_bias[0]*accel_bias[0] + accel_bias[1]*accel_bias[1] + accel_bias[2]*accel_bias[2]));
 	nx = accel_bias[0]/g1_biased;
 	ny = accel_bias[1]/g1_biased;
 	nz = accel_bias[2]/g1_biased;
@@ -119,12 +116,17 @@ void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	//accel_bias[1] -= (int32_t) (ny * accelsensitivity); 
 	//accel_bias[2] -= (int32_t) (nz * accelsensitivity);
 	
+	// Ignore the test data, because the bias is composed of a scale and a offset and is mostly static.
 	accel_bias[0] = 0;
 	accel_bias[1] = 0;
 	accel_bias[2] = 0;
 	
-	x_angle_offset = atan2(ny, nz);
-	y_angle_offset = -atan2(nx, nz); 
+	//x_angle_offset = atan2(ny, nz);
+	//y_angle_offset = -atan2(nx, nz); 
+	
+	// Ignore the test data, because the angle offset is static and the test data is error prone
+	x_angle_offset = 0.0f;
+	y_angle_offset = -0.02f;
 	
 	
 	printf("Angle Offsets: %.2f %.2f\n", x_angle_offset, y_angle_offset);
@@ -306,22 +308,9 @@ void setupSensor(Twi* interface, uint32_t currentTicks) {
 	
     //Set Digital low pass filter
 	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_CONFIG, bit(MPU6050_DLPF_CFG2) | bit(MPU6050_DLPF_CFG1));
-	
-    orientation_t orient = {
-		.ax = 0,
-		.ay = 0,
-		.az = 0
-	};
-	
-	current_orientation = orient;
+
 	last_sensor_tick = currentTicks;
-	gyroSumX = gyroSumY = gyroSumZ = 0;
-	accelSumX = accelSumY =	accelSumZ = 0;
-	sumCounter = 0;
 	
-	current_angular_rate.wx = 0;
-	current_angular_rate.wy = 0;
-	current_angular_rate.wz = 0;
     //MPU6050_SMPLRT_DIV GYRO SAMPLE RATE DIVIDER
     //MPU6050_INT_STATUS
     //MPU6050_PWR_MGMT_1 CLOCK SELECTION?
@@ -397,33 +386,6 @@ void getAnglesOfRawAcceleration(float* x_dst, float* y_dst) {
 	
 	*x_dst = atan2(y, z) - x_angle_offset;
 	*y_dst = -atan2(x, z) - y_angle_offset;
-	
-	/*
-	//Calc xz-plane projection
-	float xy = x;
-	float zy = z;
-	float length = sqrt(xy*xy+zy*zy);
-	xy /= length;
-	zy /= length;
-	
-	//Calc yz-plane projection
-	float yx = y;
-	float zx = z;
-	length = sqrt(yx*yx+zx*zx);
-	yx /= length;
-	zx /= length;
-	
-	//Apply angles between (0,0,1)
-	*x_dst = acos(zx);
-	*y_dst = acos(zy);
-	
-	if(yx < 0) {
-		*x_dst *= -1;
-	}
-	
-	if(xy > 0) {
-		*y_dst *= -1;
-	}*/
 }
 
 void getRawValuesGyro(float* x_dst, float* y_dst, float* z_dst) {
@@ -432,149 +394,11 @@ void getRawValuesGyro(float* x_dst, float* y_dst, float* z_dst) {
 	*z_dst = (float)(accel_t_gyro.value.z_gyro) * DEG_TO_RAD_FACTOR/(DGS_250);
 }
 
-float getG1(void) {
-	return g1_biased;
-}
-
 uint32_t getSensorTick(void) {
 	return last_sensor_tick;
 }
 
 uint32_t printCounter_sensor = SAMPLES_PER_SECOND;
-
-uint8_t updateOrientation() {
-	orientation_t accelOrientation, gyroOrientation;
-	
-	sensor_called();
-	//Update orientation
-	gyroSumX += accel_t_gyro.value.x_gyro;
-	gyroSumY += accel_t_gyro.value.y_gyro;
-	gyroSumZ += accel_t_gyro.value.z_gyro;
-	accelSumX += accel_t_gyro.value.x_accel;
-	accelSumY += accel_t_gyro.value.y_accel;
-	accelSumZ += accel_t_gyro.value.z_accel;
-	
-	if(sumCounter++ < 250/SAMPLES_PER_SECOND) {
-		current_angular_rate.wx = (float)(gyroSumX)/(DGS_250);
-		current_angular_rate.wy = (float)(gyroSumY)/(DGS_250);
-		current_angular_rate.wz = (float)(gyroSumZ)/(DGS_250);
-		
-		float elapsed_time = elapsed_time_s(last_sensor_tick);
-		last_sensor_tick = current_ticks();
-		gyroOrientation.ax = current_orientation.ax + current_angular_rate.wx*elapsed_time/(sumCounter);
-		gyroOrientation.ay = current_orientation.ay + current_angular_rate.wy*elapsed_time/(sumCounter);
-		gyroOrientation.az = current_orientation.az + current_angular_rate.wz*elapsed_time/(sumCounter);
-		
-		float length, xy, zy, yx, zx;
-				
-		current_acceleration.ax = (float)(accelSumX)/sumCounter;
-		current_acceleration.ay = (float)(accelSumY)/sumCounter;
-		current_acceleration.az = (float)(accelSumZ)/sumCounter;		
-		
-		// Reset ´values
-		gyroSumX = 0;
-		gyroSumY = 0;
-		gyroSumZ = 0;
-		accelSumX = 0;
-		accelSumY = 0;
-		accelSumZ = 0;
-		sumCounter = 0;
-		
-		if(elapsed_time > 0.1f) {
-			return 1;
-		}
-	
-		
-	
-		//Calc xz-plane projection
-		xy = current_acceleration.ax;
-		zy = current_acceleration.az;
-		length = sqrt(xy*xy+zy*zy);
-		xy /= length;
-		zy /= length;
-	
-		//Calc yz-plane projection
-		yx = current_acceleration.ay;
-		zx = current_acceleration.az;
-		length = sqrt(yx*yx+zx*zx);
-		yx /= length;
-		zx /= length;
-	
-		//Apply angles between (0,0,1)
-		accelOrientation.ax = acos(zx)*(180.0f/M_PI);
-		accelOrientation.ay = acos(zy)*(180.0f/M_PI);
-		accelOrientation.az = 0;
-		
-		if(yx < 0) {
-			accelOrientation.ax *= -1;
-		}
-		
-		if(xy > 0) {
-			accelOrientation.ay *= -1;
-		}
-		
-		if(sensor_config.enabled) {
-			current_orientation.ax = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ax) + sensor_config.acceleration_weight*accelOrientation.ax;
-			current_orientation.ay = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ay) + sensor_config.acceleration_weight*accelOrientation.ay;
-			current_orientation.az = gyroOrientation.az;
-			
-			// Adjust acceleration by rotated g force / Derived by Rx * Ry * GBase (offset or 0,0,G)
-			float sinx = sin(-current_orientation.ax * DEG_TO_RAD_FACTOR);
-			float cosx = cos(-current_orientation.ax * DEG_TO_RAD_FACTOR);
-			float siny = sin(-current_orientation.ay * DEG_TO_RAD_FACTOR);
-			float cosy = cos(-current_orientation.ay * DEG_TO_RAD_FACTOR);
-			float gx = G_1 * siny;
-			float gy = -sinx * cosy * G_1;
-			float gz = cosx * cosy * G_1;
-			/*float gx = cosy * accelBias[0] + siny * accelBias[2];
-			float gy = cosx * 1 * accelBias[1] + -sinx * (-siny * accelBias[0] + cosy * accelBias[2]);
-			float gz = sinx * (1 * accelBias[1]) + cosx * (-siny * accelBias[0] + cosy * accelBias[2]);*/
-			
-			current_acceleration.ax -= gx;
-			current_acceleration.ay -= gy;
-			current_acceleration.az -= gz;
-			current_acceleration.ax *= G_1_MPS / G_1;
-			current_acceleration.ay *= G_1_MPS / G_1;
-			current_acceleration.az *= G_1_MPS / G_1;
-			
-			current_speed.vx += elapsed_time * current_acceleration.ax;
-			current_speed.vy += elapsed_time * current_acceleration.ay;
-			current_speed.vz += elapsed_time * current_acceleration.az;
-		} else {
-			current_orientation.ax = 0;
-			current_orientation.ay = 0;
-			current_orientation.az = 0;
-			current_angular_rate.wx = 0;
-			current_angular_rate.wy = 0;
-			current_angular_rate.wz = 0;
-			current_speed.vx = 0;
-			current_speed.vy = 0;
-			current_speed.vz = 0;
-			current_acceleration.ax = 0;
-			current_acceleration.ay = 0;
-			current_acceleration.az = 0;
-		}		
-		
-		if(--printCounter_sensor == 0) {
-			printCounter_sensor = SAMPLES_PER_SECOND;
-			/*printf("AcX = %d | AcY = %d | AcZ = %d | GyX = %d | GyY = %d | GyZ = %d\n",
-			accel_t_gyro.value.x_accel,
-			accel_t_gyro.value.y_accel,
-			accel_t_gyro.value.z_accel,
-			accel_t_gyro.value.x_gyro,
-			accel_t_gyro.value.y_gyro,
-			accel_t_gyro.value.z_gyro);*/
-			//printf("dGyroOrientation: %d, %d, %d\n", (int) (1000.0f*dGyroOrientation.ax), (int) (1000.0f*dGyroOrientation.ay), (int) (1000.0f*dGyroOrientation.az));
-			//printf("GyroOrientation: %d, %d, %d\n", (int) gyroOrientation.ax, (int) gyroOrientation.ay, (int) gyroOrientation.az);
-			//printf("AccelOrientation: %d, %d, %d\n", (int) accelOrientation.ax, (int) accelOrientation.ay, (int) accelOrientation.az);
-			//printf("New Orientation: %d, %d, %d\n", (int) current_orientation.ax, (int) current_orientation.ay, (int) current_orientation.az);
-			//printf("AccelerationSum: %d, %d, %d\n", (int) accelSumX, (int) accelSumY, (int) accelSumZ);
-		}
-	}
-	
-	
-	return 1;
-}
 
 uint32_t getFifoSensorData(accel_gyro_union* accel_gyro, uint32_t max_count) {
 	

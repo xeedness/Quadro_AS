@@ -15,6 +15,13 @@
 
 typedef struct sensor_config_s{
 	float acceleration_weight;
+	float measurement_error_angle;
+	float measurement_error_angular_velocity;
+	float estimate_error_angle;
+	float estimate_error_angular_velocity;
+	float altitude_gain;
+	float speed_gain;
+	uint8_t use_kalman_orientation;
 	uint8_t enabled;
 } sensor_config_t;
 
@@ -26,15 +33,17 @@ typedef struct pid_config_s{
 	float pid_rate_p_factor;
 	float pid_rate_i_factor;
 	float pid_rate_d_factor;
+	float pid_vertical_velocity_p_factor;
+	float pid_vertical_velocity_i_factor;
+	float pid_vertical_velocity_d_factor;
 	uint32_t update_interval_ms;
 } pid_config_t;
 
 typedef struct esc_config_s {
-	float landing_speed;
-	float hover_speed;
-	float max_speed;
 	float min_speed;
-	float max_ratio;
+	float max_speed;
+	float vertical_velocity_pid_amplifier;
+	float vertical_velocity_limit;
 	uint32_t update_interval_ms;
 } esc_config_t;
 

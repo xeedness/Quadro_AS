@@ -24,41 +24,12 @@
 
 #define bit(b) (1UL << (b))
 
-Twi* sensor_interface;
-
 int16_t gyroBias[3], accelBias[3]; // Bias corrections for gyro and accelerometer
 float SelfTest[6];               // Gyro and accelerometer self-test sensor output
 
 struct SensorData {
     int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 };
-
-uint32_t sumCounter;
-int32_t gyroSumX, gyroSumY, gyroSumZ;
-int32_t accelSumX, accelSumY, accelSumZ;
-
-typedef struct angular_rate {
-	float wx, wy, wz;	
-} angular_rate_t;
-
-typedef struct orientation {
-	float ax, ay, az;
-} orientation_t;
-
-typedef struct position{
-	float x, y, z;
-} position_t;
-
-typedef struct drone_speed {
-	float vx, vy, vz;	
-} drone_speed_t;
-
-typedef struct acceleration {
-	float ax, ay, az;
-} acceleration_t;
-
-uint32_t last_sensor_tick;
-
 
 void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias);
 void selfTest(float* destination);
@@ -69,10 +40,8 @@ void getAngleOffsets(float* x_offset, float* y_offset);
 void getRawAcceleration(float* ax, float* ay, float* az);
 void getAnglesOfRawAcceleration(float* x_dst, float* y_dst);
 void getRawValuesGyro(float* x_dst, float* y_dst, float* z_dst);
-float getG1(void);
 uint32_t getSensorTick(void);
 
-uint8_t updateOrientation(void);
 uint32_t getFifoSensorData(accel_gyro_union* accel_gyro, uint32_t max_count);
 void sensorAxisTest(void);
 void onSensorDataReady(uint32_t arg0, uint32_t arg1);

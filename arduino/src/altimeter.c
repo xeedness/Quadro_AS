@@ -16,7 +16,7 @@ struct bmp3_dev	device;
 #define TWI_CLK 50000
 
 uint8_t dataReady = 0;
-uint32_t altitute_tick;
+uint32_t altitude_tick;
 double altitude = 0;
 double basePressure = 0;
 double Ralt = 8.314;
@@ -113,7 +113,7 @@ uint8_t updateAltitude(void) {
 		double T = 273.15 + (double)(data.temperature)/100;
 		
 		altitude = -log(currentPressure/basePressure)*Ralt*T/(M*galt);
-		altitute_tick = current_ticks();
+		altitude_tick = current_ticks();
 		//printf("Pressure: %.2f, Temp: %.2f, Altitude: %.2f\n", currentPressure, T, altitude);
 		return 0;
 	} else {
@@ -126,7 +126,7 @@ double getAltitude(void) {
 }
 
 uint32_t getAltitudeTick(void) {
-	return altitute_tick;
+	return altitude_tick;
 }
 
 BMP3_INTF_RET_TYPE altimeter_i2c_read(uint8_t reg_addr, uint8_t *read_data, uint32_t len, void *intf_ptr) {

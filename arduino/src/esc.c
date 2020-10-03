@@ -28,13 +28,8 @@ void setupESC(void) {
 	REG_PWM_CDTY0 = REG_PWM_CDTY1 = REG_PWM_CDTY2 = REG_PWM_CDTY3 = ESC_LOW;                              // Set the PWM duty cycle to 1500 - centre the servo
 	REG_PWM_ENA = PWM_ENA_CHID0 | PWM_ENA_CHID1 | PWM_ENA_CHID2 | PWM_ENA_CHID3;                          // Enable the PWM channel
 	
-	setCurrentBaseSpeed(1000);
 	minThrottle();
 	printf("ESC Setup done\n");
-}
-
-void setCurrentBaseSpeed(uint16_t base_speed) {
-	current_base_speed = base_speed;
 }
 
 void minThrottle(void) {

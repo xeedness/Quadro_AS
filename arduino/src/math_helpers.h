@@ -19,4 +19,5 @@ void multiply(float* dst, float* a, float* b, int rowsA, int colsA, int rowsB, i
 void add(float* dst, float* a, float* b, int rows, int cols);
 void subtract(float* dst, float* a, float* b, int rows, int cols);
 
+
 #endif /* MATH_HELPERS_H_ */

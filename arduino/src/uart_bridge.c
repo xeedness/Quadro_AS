@@ -70,7 +70,7 @@ void uart_bridge_send_raw(const uint8_t* data, size_t size) {
 
 ISR(USART0_Handler)
 {	
-	static uint8_t value, rcv_buf[128], dec_buf[128];
+	static uint8_t value, rcv_buf[256], dec_buf[256];
 	static size_t offset = 0;
 	static bool transmission_active = false;
 	
@@ -94,7 +94,7 @@ ISR(USART0_Handler)
 		else
 		{
 			rcv_buf[offset++] = value;
-			offset %= 128;
+			offset %= 256;
 		}
 	}
 	

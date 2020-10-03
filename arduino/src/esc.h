@@ -15,11 +15,8 @@ typedef struct speed {
 
 extern speed_t speed;
 
-float current_base_speed;
-
 // Core
 void setupESC(void);
-void setCurrentBaseSpeed(uint16_t base_speed);
 void minThrottle(void);
 void maxThrottle(void);
 void writeSpeed(void);

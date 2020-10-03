@@ -15,7 +15,7 @@
 #include "sensor.h"
 #include "pid.h"
 #include "status_display.h"
-#include "kalman.h"
+#include "filtering.h"
 
 
 uint32_t last_pid_ticks = 0;
@@ -91,7 +91,6 @@ void transition_idle(void) {
 void transition_running(void) {
 	printf("Running...");
 	pid_init();
-	current_base_speed = esc_config.hover_speed;
 }
 
 void transition_landing(void) {
@@ -153,10 +152,13 @@ void timed_running(void) {
 	}
 	if(elapsed_time_ms(last_pid_ticks) > pid_config.update_interval_ms) {
 		//printf("Updating angles: %.2f %.2f\n", current_orientation.ax, current_orientation.ay);
+		altimeter_t altimeter_data;
+		getFilteredAltitude(&altimeter_data);
+		
 		orientation_t cur_orientation;
 		angular_rate_t cur_angular_rate;
-		getKalmanOrientationEstimate(&cur_orientation, &cur_angular_rate);
-		pid_step(cur_orientation.ax, cur_orientation.ay, cur_angular_rate.wx, cur_angular_rate.wy);
+		getFilteredOrientation(&cur_orientation, &cur_angular_rate);
+		pid_step(cur_orientation.ax, cur_orientation.ay, cur_angular_rate.wx, cur_angular_rate.wy, altimeter_data.vertical_velocity);
 		last_pid_ticks = current_ticks();
 	}
 	if(elapsed_time_ms(last_speed_ticks) > esc_config.update_interval_ms) {

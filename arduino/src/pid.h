@@ -19,9 +19,11 @@ typedef struct pid_values_s {
 
 extern pid_values_t pid_angle_values;
 extern pid_values_t pid_rate_values;
+extern float pid_vertical_velocity_value;
 
 void pid_init(void);
 void set_target(float angleX, float angleY);
-void pid_step(float x_angle, float y_angle, float x_rate, float y_rate);
+void set_target_vertical_velocity(float vertical_velocity);
+void pid_step(float x_angle, float y_angle, float x_rate, float y_rate, float vertical_velocity);
 
 #endif /* PID_H_ */

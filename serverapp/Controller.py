@@ -26,61 +26,61 @@ class Controller(Frame):
         self.__init_config__()
         self.__init_controls__()
         # self.send_btn = Button(self, text="Send", command=self.send)
-        # self.send_btn.pack(side=RIGHT, padx=5, pady=5)
+        # self.send_btn.pack(side=RIGHT, padx=1, pady=1)
 
         # self.arg_encoding = StringVar(self)
         # self.arg_encoding.set("int") 
         # self.arg_menu = OptionMenu(self, self.arg_encoding, "int", "float", "hex")
-        # self.arg_menu.pack(side=RIGHT, padx=5, pady=5)
+        # self.arg_menu.pack(side=RIGHT, padx=1, pady=1)
     
         # self.args = StringVar(self)
         # self.arg_input = Entry(self, textvariable=self.args)
-        # self.arg_input.pack(side=RIGHT, padx=5, pady=5)
+        # self.arg_input.pack(side=RIGHT, padx=1, pady=1)
         
         # self.arg_input_label = Label(self, text="Arguments")
-        # self.arg_input_label.pack(side=RIGHT, padx=5, pady=5) 
+        # self.arg_input_label.pack(side=RIGHT, padx=1, pady=1) 
 
         # self.msg_type = IntVar(self)
         # self.msg_type_input = Entry(self, textvariable=self.msg_type)
-        # self.msg_type_input.pack(side=RIGHT, padx=5, pady=5) 
+        # self.msg_type_input.pack(side=RIGHT, padx=1, pady=1) 
 
         # self.msg_type_label = Label(self, text="Type")
-        # self.msg_type_label.pack(side=RIGHT, padx=5, pady=5) 
+        # self.msg_type_label.pack(side=RIGHT, padx=1, pady=1) 
 
         # self.start_btn = Button(self, text="Start", command=self.start)
-        # self.start_btn.pack(side=LEFT, padx=5, pady=5)
+        # self.start_btn.pack(side=LEFT, padx=1, pady=1)
 
         # self.stop_btn = Button(self, text="Stop", command=self.stop)
-        # self.stop_btn.pack(side=LEFT, padx=5, pady=5)
+        # self.stop_btn.pack(side=LEFT, padx=1, pady=1)
 
     def __init_basic__(self):
         self.start_btn = Button(self, text="Start", command=self.start)
-        self.start_btn.grid(row=1, column=0, padx=5, pady=5)
+        self.start_btn.grid(row=1, column=0, padx=1, pady=1)
 
         self.stop_btn = Button(self, text="Stop", command=self.stop)
-        self.stop_btn.grid(row=1, column=1, padx=5, pady=5)
+        self.stop_btn.grid(row=1, column=1, padx=1, pady=1)
 
         self.msg_type_label = Label(self, text="Type")
-        self.msg_type_label.grid(row=1, column=2, padx=5, pady=5) 
+        self.msg_type_label.grid(row=1, column=2, padx=1, pady=1) 
 
         self.msg_type = IntVar(self)
         self.msg_type_input = Entry(self, textvariable=self.msg_type)
-        self.msg_type_input.grid(row=1, column=3, padx=5, pady=5) 
+        self.msg_type_input.grid(row=1, column=3, padx=1, pady=1) 
 
         self.arg_input_label = Label(self, text="Arguments")
-        self.arg_input_label.grid(row=1, column=4, padx=5, pady=5) 
+        self.arg_input_label.grid(row=1, column=4, padx=1, pady=1) 
 
         self.args = StringVar(self)
         self.arg_input = Entry(self, textvariable=self.args)
-        self.arg_input.grid(row=1, column=5, padx=5, pady=5)
+        self.arg_input.grid(row=1, column=5, padx=1, pady=1)
 
         self.arg_encoding = StringVar(self)
         self.arg_encoding.set("int") 
         self.arg_menu = OptionMenu(self, self.arg_encoding, "int", "float", "hex")
-        self.arg_menu.grid(row=1, column=6, padx=5, pady=5)
+        self.arg_menu.grid(row=1, column=6, padx=1, pady=1)
 
         self.send_btn = Button(self, text="Send", command=self.send)
-        self.send_btn.grid(row=1, column=7, padx=5, pady=5)
+        self.send_btn.grid(row=1, column=7, padx=1, pady=1)
     
     def __init_config__(self):
         # PID
@@ -112,19 +112,23 @@ class Controller(Frame):
         self.d_rate_factor = StringVar(self, value=self.config.d_rate_factor)
         self.d_rate_factor_input = Entry(self, textvariable=self.d_rate_factor)
 
+        self.p_vertical_velocity_factor_label = Label(self, text="P-Velocity-Factor")
+        self.p_vertical_velocity_factor = StringVar(self, value=self.config.p_vertical_velocity_factor)
+        self.p_vertical_velocity_factor_input = Entry(self, textvariable=self.p_vertical_velocity_factor)
+
+        self.i_vertical_velocity_factor_label = Label(self, text="I-Velocity-Factor")
+        self.i_vertical_velocity_factor = StringVar(self, value=self.config.i_vertical_velocity_factor)
+        self.i_vertical_velocity_factor_input = Entry(self, textvariable=self.i_vertical_velocity_factor)
+
+        self.d_vertical_velocity_factor_label = Label(self, text="D-Velocity-Factor")
+        self.d_vertical_velocity_factor = StringVar(self, value=self.config.d_vertical_velocity_factor)
+        self.d_vertical_velocity_factor_input = Entry(self, textvariable=self.d_vertical_velocity_factor)
+
         self.pid_interval_label = Label(self, text="PID-Interval")
         self.pid_interval = StringVar(self, value=self.config.pid_interval)
         self.pid_interval_input = Entry(self, textvariable=self.pid_interval)
 
         # Speed
-        self.landing_speed_label = Label(self, text="Landing-Speed")
-        self.landing_speed = StringVar(self, value=self.config.landing_speed)
-        self.landing_speed_input = Entry(self, textvariable=self.landing_speed)
-
-        self.hover_speed_label = Label(self, text="Hover-Speed")
-        self.hover_speed = StringVar(self, value=self.config.hover_speed)
-        self.hover_speed_input = Entry(self, textvariable=self.hover_speed)
-
         self.min_speed_label = Label(self, text="Min-Speed")
         self.min_speed = StringVar(self, value=self.config.min_speed)
         self.min_speed_input = Entry(self, textvariable=self.min_speed)
@@ -133,9 +137,13 @@ class Controller(Frame):
         self.max_speed = StringVar(self, value=self.config.max_speed)
         self.max_speed_input = Entry(self, textvariable=self.max_speed)
 
-        self.max_ratio_label = Label(self, text="Max-Ratio")
-        self.max_ratio = StringVar(self, value=self.config.max_ratio)
-        self.max_ratio_input = Entry(self, textvariable=self.max_ratio)
+        self.vertical_velocity_amplifier_label = Label(self, text="Velocity-Amp")
+        self.vertical_velocity_amplifier = StringVar(self, value=self.config.vertical_velocity_amplifier)
+        self.vertical_velocity_amplifier_input = Entry(self, textvariable=self.vertical_velocity_amplifier)
+
+        self.velocity_limit_label = Label(self, text="Velocity-Limit")
+        self.velocity_limit = StringVar(self, value=self.config.velocity_limit)
+        self.velocity_limit_input = Entry(self, textvariable=self.velocity_limit)
 
         self.speed_interval_label = Label(self, text="Speed-Interval")
         self.speed_interval = StringVar(self, value=self.config.speed_interval)
@@ -147,11 +155,40 @@ class Controller(Frame):
         self.acceleration_weight = StringVar(self, value=self.config.acceleration_weight)
         self.acceleration_weight_input = Entry(self, textvariable=self.acceleration_weight)
 
+        self.measurement_error_angle_label = Label(self, text="Err-Mea-Angle")
+        self.measurement_error_angle = StringVar(self, value=self.config.measurement_error_angle)
+        self.measurement_error_angle_input = Entry(self, textvariable=self.measurement_error_angle)
+
+        self.measurement_error_angular_velocity_label = Label(self, text="Err-Mea-Angle-V")
+        self.measurement_error_angular_velocity = StringVar(self, value=self.config.measurement_error_angular_velocity)
+        self.measurement_error_angular_velocity_input = Entry(self, textvariable=self.measurement_error_angular_velocity)
+
+        self.estimate_error_angle_label = Label(self, text="Err-Est-Angle")
+        self.estimate_error_angle = StringVar(self, value=self.config.estimate_error_angle)
+        self.estimate_error_angle_input = Entry(self, textvariable=self.estimate_error_angle)
+
+        self.estimate_error_angular_velocity_label = Label(self, text="Err-Est-Angle-V")
+        self.estimate_error_angular_velocity = StringVar(self, value=self.config.estimate_error_angular_velocity)
+        self.estimate_error_angular_velocity_input = Entry(self, textvariable=self.estimate_error_angular_velocity)
+
+        self.altitude_gain_label = Label(self, text="Altitude-Gain")
+        self.altitude_gain = StringVar(self, value=self.config.altitude_gain)
+        self.altitude_gain_input = Entry(self, textvariable=self.altitude_gain)
+
+        self.speed_gain_label = Label(self, text="Speed-Gain")
+        self.speed_gain = StringVar(self, value=self.config.speed_gain)
+        self.speed_gain_input = Entry(self, textvariable=self.speed_gain)
+
+        self.use_kalman_orientation_label = Label(self, text="Use-Kalman-Orientation")
+        self.use_kalman_orientation = StringVar(self, value=self.config.use_kalman_orientation)
+        self.use_kalman_orientation_input = Entry(self, textvariable=self.use_kalman_orientation)                
+
         self.sensor_enabled_label = Label(self, text="Sensor-Enabled")
         self.sensor_enabled = StringVar(self, value=self.config.sensor_enabled)
         self.sensor_enabled_input = Entry(self, textvariable=self.sensor_enabled)                
 
         # Log
+
         self.orientation_enabled_label = Label(self, text="Log-Orientation")
         self.orientation_enabled = StringVar(self, value=self.config.orientation_enabled)
         self.orientation_enabled_input = Entry(self, textvariable=self.orientation_enabled)
@@ -173,62 +210,86 @@ class Controller(Frame):
         self.log_interval_input = Entry(self, textvariable=self.log_interval)
 
         
-
-
         # Controls
 
         self.send_config_btn = Button(self, text="Send Config", command=self.send_config)
         self.save_config_btn = Button(self, text="Save Config", command=self.save_config)
 
-        self.pid_factor_label.grid(row=2, column=0, padx=5, pady=5) 
-        self.pid_factor_input.grid(row=2, column=1, padx=5, pady=5)
-        self.p_angle_factor_label.grid(row=3, column=0, padx=5, pady=5)
-        self.p_angle_factor_input.grid(row=3, column=1, padx=5, pady=5)
-        self.i_angle_factor_label.grid(row=4, column=0, padx=5, pady=5)
-        self.i_angle_factor_input.grid(row=4, column=1, padx=5, pady=5)
-        self.d_angle_factor_label.grid(row=5, column=0, padx=5, pady=5)
-        self.d_angle_factor_input.grid(row=5, column=1, padx=5, pady=5)
-        self.p_rate_factor_label.grid(row=6, column=0, padx=5, pady=5)
-        self.p_rate_factor_input.grid(row=6, column=1, padx=5, pady=5)
-        self.i_rate_factor_label.grid(row=7, column=0, padx=5, pady=5)
-        self.i_rate_factor_input.grid(row=7, column=1, padx=5, pady=5)
-        self.d_rate_factor_label.grid(row=8, column=0, padx=5, pady=5)
-        self.d_rate_factor_input.grid(row=8, column=1, padx=5, pady=5)
-        self.pid_interval_label.grid(row=9, column=0, padx=5, pady=5)
-        self.pid_interval_input.grid(row=9, column=1, padx=5, pady=5)
+        self.pid_factor_label.grid(row=2, column=0, padx=1, pady=1) 
+        self.pid_factor_input.grid(row=2, column=1, padx=1, pady=1)
+        self.p_angle_factor_label.grid(row=3, column=0, padx=1, pady=1)
+        self.p_angle_factor_input.grid(row=3, column=1, padx=1, pady=1)
+        self.i_angle_factor_label.grid(row=4, column=0, padx=1, pady=1)
+        self.i_angle_factor_input.grid(row=4, column=1, padx=1, pady=1)
+        self.d_angle_factor_label.grid(row=5, column=0, padx=1, pady=1)
+        self.d_angle_factor_input.grid(row=5, column=1, padx=1, pady=1)
 
-        self.landing_speed_label.grid(row=2, column=2, padx=5, pady=5)
-        self.landing_speed_input.grid(row=2, column=3, padx=5, pady=5)
-        self.hover_speed_label.grid(row=3, column=2, padx=5, pady=5)
-        self.hover_speed_input.grid(row=3, column=3, padx=5, pady=5)
-        self.min_speed_label.grid(row=4, column=2, padx=5, pady=5)
-        self.min_speed_input.grid(row=4, column=3, padx=5, pady=5)
-        self.max_speed_label.grid(row=5, column=2, padx=5, pady=5)
-        self.max_speed_input.grid(row=5, column=3, padx=5, pady=5)
-        self.max_ratio_label.grid(row=6, column=2, padx=5, pady=5)
-        self.max_ratio_input.grid(row=6, column=3, padx=5, pady=5)
-        self.speed_interval_label.grid(row=7, column=2, padx=5, pady=5)
-        self.speed_interval_input.grid(row=7, column=3, padx=5, pady=5)
+        self.p_rate_factor_label.grid(row=6, column=0, padx=1, pady=1)
+        self.p_rate_factor_input.grid(row=6, column=1, padx=1, pady=1)
+        self.i_rate_factor_label.grid(row=7, column=0, padx=1, pady=1)
+        self.i_rate_factor_input.grid(row=7, column=1, padx=1, pady=1)
+        self.d_rate_factor_label.grid(row=8, column=0, padx=1, pady=1)
+        self.d_rate_factor_input.grid(row=8, column=1, padx=1, pady=1)
 
-        self.orientation_enabled_label.grid(row=2, column=4, padx=5, pady=5)
-        self.orientation_enabled_input.grid(row=2, column=5, padx=5, pady=5)
-        self.pid_enabled_label.grid(row=3, column=4, padx=5, pady=5)
-        self.pid_enabled_input.grid(row=3, column=5, padx=5, pady=5)
-        self.speed_enabled_label.grid(row=4, column=4, padx=5, pady=5)
-        self.speed_enabled_input.grid(row=4, column=5, padx=5, pady=5)
-        self.altitude_enabled_label.grid(row=5, column=4, padx=5, pady=5)
-        self.altitude_enabled_input.grid(row=5, column=5, padx=5, pady=5)
-        self.log_interval_label.grid(row=6, column=4, padx=5, pady=5)
-        self.log_interval_input.grid(row=6, column=5, padx=5, pady=5)
+        self.pid_interval_label.grid(row=9, column=0, padx=1, pady=1)
+        self.pid_interval_input.grid(row=9, column=1, padx=1, pady=1)
 
-        self.acceleration_weight_label.grid(row=2, column=6, padx=5, pady=5)
-        self.acceleration_weight_input.grid(row=2, column=7, padx=5, pady=5)
+        self.p_vertical_velocity_factor_label.grid(row=2, column=2, padx=1, pady=1)
+        self.p_vertical_velocity_factor_input.grid(row=2, column=3, padx=1, pady=1)
+        self.i_vertical_velocity_factor_label.grid(row=3, column=2, padx=1, pady=1)
+        self.i_vertical_velocity_factor_input.grid(row=3, column=3, padx=1, pady=1)
+        self.d_vertical_velocity_factor_label.grid(row=4, column=2, padx=1, pady=1)
+        self.d_vertical_velocity_factor_input.grid(row=4, column=3, padx=1, pady=1)
 
-        self.sensor_enabled_label.grid(row=3, column=6, padx=5, pady=5)
-        self.sensor_enabled_input.grid(row=3, column=7, padx=5, pady=5)
+        self.min_speed_label.grid(row=5, column=2, padx=1, pady=1)
+        self.min_speed_input.grid(row=5, column=3, padx=1, pady=1)
+        self.max_speed_label.grid(row=6, column=2, padx=1, pady=1)
+        self.max_speed_input.grid(row=6, column=3, padx=1, pady=1)
+        self.vertical_velocity_amplifier_label.grid(row=7, column=2, padx=1, pady=1)
+        self.vertical_velocity_amplifier_input.grid(row=7, column=3, padx=1, pady=1)
+        self.velocity_limit_label.grid(row=8, column=2, padx=1, pady=1)
+        self.velocity_limit_input.grid(row=8, column=3, padx=1, pady=1)
 
-        self.send_config_btn.grid(row=7, column=4, padx=5, pady=5)
-        self.save_config_btn.grid(row=7, column=5, padx=5, pady=5)
+        self.speed_interval_label.grid(row=9, column=2, padx=1, pady=1)
+        self.speed_interval_input.grid(row=9, column=3, padx=1, pady=1)
+
+        self.orientation_enabled_label.grid(row=2, column=4, padx=1, pady=1)
+        self.orientation_enabled_input.grid(row=2, column=5, padx=1, pady=1)
+        self.pid_enabled_label.grid(row=3, column=4, padx=1, pady=1)
+        self.pid_enabled_input.grid(row=3, column=5, padx=1, pady=1)
+        self.speed_enabled_label.grid(row=4, column=4, padx=1, pady=1)
+        self.speed_enabled_input.grid(row=4, column=5, padx=1, pady=1)
+        self.altitude_enabled_label.grid(row=5, column=4, padx=1, pady=1)
+        self.altitude_enabled_input.grid(row=5, column=5, padx=1, pady=1)
+        self.log_interval_label.grid(row=6, column=4, padx=1, pady=1)
+        self.log_interval_input.grid(row=6, column=5, padx=1, pady=1)
+
+        self.acceleration_weight_label.grid(row=2, column=6, padx=1, pady=1)
+        self.acceleration_weight_input.grid(row=2, column=7, padx=1, pady=1)
+
+        self.measurement_error_angle_label.grid(row=3, column=6, padx=1, pady=1)
+        self.measurement_error_angle_input.grid(row=3, column=7, padx=1, pady=1)
+        self.measurement_error_angular_velocity_label.grid(row=4, column=6, padx=1, pady=1)
+        self.measurement_error_angular_velocity_input.grid(row=4, column=7, padx=1, pady=1)
+
+        self.estimate_error_angle_label.grid(row=5, column=6, padx=1, pady=1)
+        self.estimate_error_angle_input.grid(row=5, column=7, padx=1, pady=1)
+        self.estimate_error_angular_velocity_label.grid(row=6, column=6, padx=1, pady=1)
+        self.estimate_error_angular_velocity_input.grid(row=6, column=7, padx=1, pady=1)
+        
+        self.altitude_gain_label.grid(row=7, column=6, padx=1, pady=1)
+        self.altitude_gain_input.grid(row=7, column=7, padx=1, pady=1)
+        self.speed_gain_label.grid(row=8, column=6, padx=1, pady=1)
+        self.speed_gain_input.grid(row=8, column=7, padx=1, pady=1)
+
+        self.use_kalman_orientation_label.grid(row=9, column=6, padx=1, pady=1)
+        self.use_kalman_orientation_input.grid(row=9, column=7, padx=1, pady=1)
+        
+        self.sensor_enabled_label.grid(row=10, column=6, padx=1, pady=1)
+        self.sensor_enabled_input.grid(row=10, column=7, padx=1, pady=1)
+
+        self.send_config_btn.grid(row=7, column=4, padx=1, pady=1)
+        self.save_config_btn.grid(row=7, column=5, padx=1, pady=1)
         
     def __init_controls__(self):
 
@@ -281,16 +342,21 @@ class Controller(Frame):
         self.config.p_angle_factor = float(self.p_angle_factor.get())
         self.config.i_angle_factor = float(self.i_angle_factor.get())
         self.config.d_angle_factor = float(self.d_angle_factor.get())
+
         self.config.p_rate_factor = float(self.p_rate_factor.get())
         self.config.i_rate_factor = float(self.i_rate_factor.get())
         self.config.d_rate_factor = float(self.d_rate_factor.get())
+
+        self.config.p_vertical_velocity_factor = float(self.p_vertical_velocity_factor.get())
+        self.config.i_vertical_velocity_factor = float(self.i_vertical_velocity_factor.get())
+        self.config.d_vertical_velocity_factor = float(self.d_vertical_velocity_factor.get())
+
         self.config.pid_interval = int(self.pid_interval.get())
 
-        self.config.landing_speed = float(self.landing_speed.get())
-        self.config.hover_speed = float(self.hover_speed.get())
-        self.config.max_speed = float(self.max_speed.get())
         self.config.min_speed = float(self.min_speed.get())
-        self.config.max_ratio = float(self.max_ratio.get())
+        self.config.max_speed = float(self.max_speed.get())
+        self.config.vertical_velocity_amplifier = float(self.vertical_velocity_amplifier.get())
+        self.config.velocity_limit = float(self.velocity_limit.get())
         self.config.speed_interval = int(self.speed_interval.get())
 
         self.config.orientation_enabled = int(self.orientation_enabled.get())
@@ -300,6 +366,13 @@ class Controller(Frame):
         self.config.log_interval = int(self.log_interval.get())
 
         self.config.acceleration_weight = float(self.acceleration_weight.get())
+        self.config.measurement_error_angle = float(self.measurement_error_angle.get())
+        self.config.measurement_error_angular_velocity = float(self.measurement_error_angular_velocity.get())
+        self.config.estimate_error_angle = float(self.estimate_error_angle.get())
+        self.config.estimate_error_angular_velocity = float(self.estimate_error_angular_velocity.get())
+        self.config.altitude_gain = float(self.altitude_gain.get())
+        self.config.speed_gain = float(self.speed_gain.get())
+        self.config.use_kalman_orientation = int(self.use_kalman_orientation.get())
         self.config.sensor_enabled = int(self.sensor_enabled.get())
     
     def send_config(self):
@@ -313,6 +386,9 @@ class Controller(Frame):
         payload = payload + struct.pack("f", self.config.p_rate_factor)
         payload = payload + struct.pack("f", self.config.i_rate_factor)
         payload = payload + struct.pack("f", self.config.d_rate_factor)
+        payload = payload + struct.pack("f", self.config.p_vertical_velocity_factor)
+        payload = payload + struct.pack("f", self.config.i_vertical_velocity_factor)
+        payload = payload + struct.pack("f", self.config.d_vertical_velocity_factor)
         payload = payload + struct.pack("<i", self.config.pid_interval)
         
         payload = payload + struct.pack("B", self.config.orientation_enabled)
@@ -321,16 +397,21 @@ class Controller(Frame):
         payload = payload + struct.pack("B", self.config.altitude_enabled)
         payload = payload + struct.pack("<i", self.config.log_interval)
 
-        payload = payload + struct.pack("f", self.config.landing_speed)
-        payload = payload + struct.pack("f", self.config.hover_speed)
-        payload = payload + struct.pack("f", self.config.max_speed)
         payload = payload + struct.pack("f", self.config.min_speed)
-        payload = payload + struct.pack("f", self.config.max_ratio)
+        payload = payload + struct.pack("f", self.config.max_speed)
+        payload = payload + struct.pack("f", self.config.vertical_velocity_amplifier)
+        payload = payload + struct.pack("f", self.config.velocity_limit)
         payload = payload + struct.pack("<i", self.config.speed_interval)
 
         payload = payload + struct.pack("f", self.config.acceleration_weight)
+        payload = payload + struct.pack("f", self.config.measurement_error_angle)
+        payload = payload + struct.pack("f", self.config.measurement_error_angular_velocity)
+        payload = payload + struct.pack("f", self.config.estimate_error_angle)
+        payload = payload + struct.pack("f", self.config.estimate_error_angular_velocity)
+        payload = payload + struct.pack("f", self.config.altitude_gain)
+        payload = payload + struct.pack("f", self.config.speed_gain)
+        payload = payload + struct.pack("B", self.config.use_kalman_orientation)
         payload = payload + struct.pack("B", self.config.sensor_enabled)
-        payload = payload + struct.pack("B", self.config.sensor_enabled) # Padding
         payload = payload + struct.pack("B", self.config.sensor_enabled) # Padding
         payload = payload + struct.pack("B", self.config.sensor_enabled) # Padding
 

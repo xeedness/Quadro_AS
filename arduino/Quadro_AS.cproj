@@ -578,10 +578,10 @@
     <Compile Include="src\config.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\kalman.c">
+    <Compile Include="src\filtering.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\kalman.h">
+    <Compile Include="src\filtering.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\log.c">
@@ -597,6 +597,9 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\message_types.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\model_vars.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\state_machine.c">

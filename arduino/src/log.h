@@ -12,7 +12,7 @@
 #include "sensor.h"
 #include "pid.h"
 #include "esc.h"
-#include "kalman.h"
+#include "filtering.h"
 
 void log_enable(void);
 void log_disable(void);

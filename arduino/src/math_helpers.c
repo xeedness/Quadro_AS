@@ -17,7 +17,7 @@ int invert(float dst[4][4], float src[4][4], int dim) {
 	float fac[4][4], facT[4][4];
 	float d = determinant(src, dim);
 	if(d == 0) {
-		printf("Determinant is zero.");
+		//printf("Determinant is zero.\n");
 		return 1;
 	}
 	cofactor(fac, src, dim);

@@ -42,7 +42,7 @@
 #include "state_machine.h"
 #include "status_display.h"
 #include "call_counter.h"
-#include "kalman.h"
+#include "filtering.h"
 
 #include "log.h"
 #include "uart_bridge.h"
@@ -77,8 +77,8 @@ int main (void) {
 		delay_s(5);
 	}*/
 	
-	uint32_t used_altitute_altimeter_tick = getAltitudeTick();
-	uint32_t used_altitute_sensor_tick = getSensorTick();
+	uint32_t used_altitude_altimeter_tick = getAltitudeTick();
+	uint32_t used_altitude_sensor_tick = getSensorTick();
 	uint32_t used_attitute_sensor_tick = getSensorTick();
 	
 	uint32_t current_altimeter_tick = 0;
@@ -90,12 +90,12 @@ int main (void) {
 		current_altimeter_tick = getAltitudeTick();
 		current_sensor_tick = getSensorTick();
 		
-		if(current_altimeter_tick != used_altitute_altimeter_tick && current_sensor_tick != used_altitute_sensor_tick) {
-			updateKalmanAltitude();
+		if(current_altimeter_tick != used_altitude_altimeter_tick && current_sensor_tick != used_altitude_sensor_tick) {
+			updateAltitudeFilter();
 		}
 		
 		if(current_sensor_tick != used_attitute_sensor_tick) {
-			updateKalmanOrientation();
+			updateOrientationFilter();
 		}		
 		
 		// Do all the time depending steps
@@ -165,11 +165,10 @@ void SysTick_Handler(void)
 }
 
 void set_default_config(void) {
-	esc_config.landing_speed = 1200;
-	esc_config.hover_speed = 1100;
-	//esc_config.HoverSpeed = 1350;
-	esc_config.max_speed = 1800;
-	esc_config.min_speed = 1100;
+	esc_config.min_speed = 0.1f;
+	esc_config.max_speed = 0.8f;
+	esc_config.vertical_velocity_pid_amplifier = 1.0f;
+	esc_config.vertical_velocity_limit = 0.1f;
 	esc_config.update_interval_ms = 20;
 	
 	pid_config.pid_amplify_factor = 0;
@@ -179,6 +178,9 @@ void set_default_config(void) {
 	pid_config.pid_rate_p_factor = 0.3f;
 	pid_config.pid_rate_i_factor = 0.01f;
 	pid_config.pid_rate_d_factor = 0.01f;
+	pid_config.pid_vertical_velocity_d_factor = 1.0f;
+	pid_config.pid_vertical_velocity_i_factor = 0.2f;
+	pid_config.pid_vertical_velocity_p_factor = 0;
 	pid_config.update_interval_ms = 20;
 	
 	log_config.orientation_enabled = 0;
@@ -188,6 +190,14 @@ void set_default_config(void) {
 	log_config.log_interval_ms = 50;
 	
 	sensor_config.acceleration_weight = 0.1f;
+	sensor_config.measurement_error_angle = 0.1f;
+	sensor_config.measurement_error_angular_velocity = 0.001f;
+	sensor_config.estimate_error_angle = 0.001f;
+	sensor_config.estimate_error_angular_velocity = 0.1f;
+	sensor_config.altitude_gain = -1.1547f; //-0.2828f; //-0.6325f;//-0.1925f;
+	sensor_config.speed_gain = -0.6667; //-0.2f;//-0.0185f;
+	sensor_config.use_kalman_orientation = 1;
+	sensor_config.enabled = 1;
 }
 
 // Update PID values according to configured update interval
@@ -205,7 +215,7 @@ void timed_logging(void) {
 		if(log_config.orientation_enabled) {			
 			orientation_t cur_orientation;
 			angular_rate_t cur_angular_velocity;
-			getKalmanOrientationEstimate(&cur_orientation, &cur_angular_velocity);
+			getFilteredOrientation(&cur_orientation, &cur_angular_velocity);
 			
 			// Substitute Z Orientation with z acceleration for debugging purposes
 			cur_orientation.ax /= DEG_TO_RAD_FACTOR;
@@ -227,7 +237,7 @@ void timed_logging(void) {
 		
 		if(log_config.altitude_enabled) {
 			altimeter_t altimeter_data;
-			getKalmanAltituteEstimate(&altimeter_data);
+			getFilteredAltitude(&altimeter_data);
 			log_altimeter_data(altimeter_data);
 		}
 		

@@ -111,29 +111,6 @@ void updateOrientationFilter(void) {
 	}
 }
 
-void getFilteredAltitude(altimeter_t* altimeter_data) {
-	altimeter_data->altitude = current_altimeter_data.altitude;
-	altimeter_data->vertical_velocity = current_altimeter_data.vertical_velocity;
-	altimeter_data->vertical_acceleration = current_altimeter_data.vertical_acceleration;
-}
-
-void updateAltitudeFilter(void) {
-	float dt = elapsed_time_s(last_altitude_tick);
-	last_altitude_tick = current_ticks();
-	
-	current_altimeter_data.vertical_acceleration = getVerticalAcceleration();
-	float mAltitude = (float)getAltitude();
-	float dAltitude = (current_altimeter_data.altitude - mAltitude);
-	current_altimeter_data.altitude += dt * current_altimeter_data.vertical_velocity;
-	current_altimeter_data.altitude += dAltitude * dt * sensor_config.altitude_gain + dAltitude * sensor_config.speed_gain * dt * dt * 0.5f;
-	current_altimeter_data.altitude += dt * dt * 0.5f * current_altimeter_data.vertical_acceleration;
-	current_altimeter_data.vertical_velocity += sensor_config.speed_gain * dt * dAltitude;
-	current_altimeter_data.vertical_velocity += dt * current_altimeter_data.vertical_acceleration;
-	
-	//printf("Am: %0.3f, A: %.3f, dA: %.3f, d2A: %.3f\n", mAltitude, current_altitude, current_vertical_speed, current_vertical_acceleration);
-	//printf("%0.3f %.3f\n", mAltitude, current_vertical_acceleration);
-}
-
 void updateKalmanOrientationInternal(orientation_t measured_phi, angular_rate_t measured_omega) {	
 	k1.R[0][0] = sensor_config.measurement_error_angle;
 	k1.R[1][1] = sensor_config.measurement_error_angle;
@@ -255,12 +232,35 @@ void updateKalmanOrientationEstimate(float dt) {
 	// printf("\n%.7f %.7f %.7f %.7f", k1.P[0], k1.P[1], k1.P[2], k1.P[3]);
 }
 
+void getFilteredAltitude(altimeter_t* altimeter_data) {
+	altimeter_data->altitude = current_altimeter_data.altitude;
+	altimeter_data->vertical_velocity = current_altimeter_data.vertical_velocity;
+	altimeter_data->vertical_acceleration = current_altimeter_data.vertical_acceleration;
+}
+
+void updateAltitudeFilter(void) {
+	float dt = elapsed_time_s(last_altitude_tick);
+	last_altitude_tick = current_ticks();
+	
+	current_altimeter_data.vertical_acceleration = getVerticalAcceleration();
+	float mAltitude = (float)getAltitude();
+	float dAltitude = (current_altimeter_data.altitude - mAltitude);
+	current_altimeter_data.altitude += dt * current_altimeter_data.vertical_velocity;
+	current_altimeter_data.altitude += dAltitude * dt * sensor_config.altitude_gain + dAltitude * sensor_config.speed_gain * dt * dt * 0.5f;
+	current_altimeter_data.altitude += dt * dt * 0.5f * current_altimeter_data.vertical_acceleration;
+	current_altimeter_data.vertical_velocity += sensor_config.speed_gain * dt * dAltitude;
+	current_altimeter_data.vertical_velocity += dt * current_altimeter_data.vertical_acceleration;
+	
+	//printf("Am: %0.3f, A: %.3f, dA: %.3f, d2A: %.3f\n", mAltitude, current_altitude, current_vertical_speed, current_vertical_acceleration);
+	//printf("%0.3f %.3f\n", mAltitude, current_vertical_acceleration);
+}
+
 int counter = 0;
 
-//float x_acc_accu = 0;
-//float y_acc_accu = 0;
-//float z_acc_accu = 0;
-//float length_accu = 0;
+float x_acc_accu = 0;
+float y_acc_accu = 0;
+float z_acc_accu = 0;
+float length_accu = 0;
 
 float getVerticalAcceleration(void) {
 	orientation_t attitute;
@@ -276,8 +276,8 @@ float getVerticalAcceleration(void) {
 	float siny = sin(attitute.ay + y_angle_offset);
 	float cosy = cos(attitute.ay + y_angle_offset);
 
-	//float x_acceleration = ((cosy * ax + siny * az)) / G_1 * G_1_MPS;
-	//float y_acceleration = (cosx * ay + -sinx * (-siny * ax + cosy * az)) / G_1 * G_1_MPS;
+	float x_acceleration = ((cosy * ax + siny * az)) / G_1 * G_1_MPS;
+	float y_acceleration = (cosx * ay + -sinx * (-siny * ax + cosy * az)) / G_1 * G_1_MPS;
 	float z_acceleration = (sinx * ay + cosx * (-siny * ax + cosy * az)) / G_1 * G_1_MPS;
 	
 	// Debug code for estimating sensor offsets
@@ -290,7 +290,7 @@ float getVerticalAcceleration(void) {
 	//length_accu = length_accu * 0.98f + length * 0.02f;
 	//if(counter % 200 == 0) {
 		//counter = 0;
-		////printf("%.3f %.3f %.3f\n", x_acc_accu, y_acc_accu, z_acc_accu);	
+		//printf("%.3f %.3f %.3f\n", x_acc_accu, y_acc_accu, z_acc_accu);	
 		//printf("%.3f\n", length_accu);	
 	//}
 	//counter++;

@@ -199,6 +199,21 @@ void update_speed(void) {
 	
 	//printf("Speed: %.3f %.3f %.3f %.3f %.3f %.3f %.3f \n", current_base_speed, pid_x, pid_y, speed.front_left_speed, speed.front_right_speed, speed.rear_left_speed, speed.rear_right_speed);
 	
+	/*if(speed.front_left_speed < 0.2) {
+		speed.front_left_speed = 0;
+	}
+	if(speed.front_right_speed < 0.2) {
+		speed.front_right_speed = 0;
+	}
+
+	if(speed.rear_left_speed < 0.2) {
+		speed.rear_left_speed = 0;
+	}
+
+	if(speed.rear_right_speed < 0.2) {
+		speed.rear_right_speed = 0;
+	}*/
+	
 	writeSpeed();
 }
 

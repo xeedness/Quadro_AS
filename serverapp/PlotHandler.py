@@ -35,7 +35,7 @@ class PlotHandler():
 
 
     def add_angle_plot_annotations(self, plot):
-        self.max_angle = 20
+        self.max_angle = 360
         angle1 = str(self.max_angle/4)+"°"
         angle2 = str(2*self.max_angle/4)+"°"
         angle3 = str(3*self.max_angle/4)+"°"

@@ -13,7 +13,7 @@ speed_t speed;
 
 void setupESC(void) {
 	// PWM Set-up on pin: DAC1
-	REG_PMC_PCER1 |= PMC_PCER1_PID36;                     // Enable PWM
+	REG_PMC_PCER1 |= PMC_PCER1_PID36;                    // Enable PWM
 	REG_PIOC_ABSR |= PIO_ABSR_P2;                        // Set PWM pin perhipheral type A or B, in this case B
 	REG_PIOC_PDR |= PIO_PDR_P2;                          // Set PWM pin to an output
 	REG_PIOC_ABSR |= PIO_ABSR_P4;                        // Set PWM pin perhipheral type A or B, in this case B
@@ -22,11 +22,18 @@ void setupESC(void) {
 	REG_PIOC_PDR |= PIO_PDR_P6;                          // Set PWM pin to an output
 	REG_PIOC_ABSR |= PIO_ABSR_P8;                        // Set PWM pin perhipheral type A or B, in this case B
 	REG_PIOC_PDR |= PIO_PDR_P8;                          // Set PWM pin to an output
-	REG_PWM_CLK = PWM_CLK_PREA(0) | PWM_CLK_DIVA(42);     // Set the PWM clock rate to 2MHz (84MHz/42)
-	REG_PWM_CMR0 = REG_PWM_CMR1 = REG_PWM_CMR2 = REG_PWM_CMR3 = PWM_CMR_CALG | PWM_CMR_CPRE_CLKA;      // Enable dual slope PWM and set the clock source as CLKA
-	REG_PWM_CPRD0 = REG_PWM_CPRD1 = REG_PWM_CPRD2 = REG_PWM_CPRD3 = 20000;                                // Set the PWM frequency 2MHz/(2 * 20000) = 50Hz
-	REG_PWM_CDTY0 = REG_PWM_CDTY1 = REG_PWM_CDTY2 = REG_PWM_CDTY3 = ESC_LOW;                              // Set the PWM duty cycle to 1500 - centre the servo
-	REG_PWM_ENA = PWM_ENA_CHID0 | PWM_ENA_CHID1 | PWM_ENA_CHID2 | PWM_ENA_CHID3;                          // Enable the PWM channel
+	REG_PWM_CLK = PWM_CLK_PREA(0) | PWM_CLK_DIVA(42);    // Set the PWM clock rate to 2MHz (84MHz/42)
+	REG_PWM_CMR0 = REG_PWM_CMR1 = REG_PWM_CMR2 = REG_PWM_CMR3 = PWM_CMR_CALG | PWM_CMR_CPRE_CLKA;			// Enable dual slope PWM and set the clock source as CLKA
+	REG_PWM_CPRD0 = REG_PWM_CPRD1 = REG_PWM_CPRD2 = REG_PWM_CPRD3 = 5000;									// Set the PWM frequency 2MHz/(2 * 20000) = 50Hz
+	REG_PWM_CDTY0 = REG_PWM_CDTY1 = REG_PWM_CDTY2 = REG_PWM_CDTY3 = ESC_LOW;								// Set the PWM duty cycle to 1500 - centre the servo
+	
+	// Synchronization
+	REG_PWM_SCM = PWM_SCM_SYNC0 | PWM_SCM_SYNC1 | PWM_SCM_SYNC2 | PWM_SCM_SYNC3 | PWM_SCM_UPDM_MODE1;		// Synchronize channels and set update mode to automatic
+	REG_PWM_SCUP = PWM_SCUP_UPR(0);																						// Set Update counter to update on every cycle
+	
+	REG_PWM_ENA = PWM_ENA_CHID0 | PWM_ENA_CHID1 | PWM_ENA_CHID2 | PWM_ENA_CHID3;							// Enable the PWM channel
+	
+	
 	
 	minThrottle();
 	printf("ESC Setup done\n");
@@ -48,10 +55,17 @@ void writeSpeed(void) {
 	uint16_t rl = ESC_LOW + (ESC_HIGH-ESC_LOW) * speed.rear_left_speed;
 	uint16_t rr = ESC_LOW + (ESC_HIGH-ESC_LOW) * speed.rear_right_speed;
 	
-	REG_PWM_CDTYUPD0 = fl;
+	// Std Config
+	/*REG_PWM_CDTYUPD0 = fl;
 	REG_PWM_CDTYUPD1 = fr;
 	REG_PWM_CDTYUPD2 = rl;
-	REG_PWM_CDTYUPD3 = rr;
+	REG_PWM_CDTYUPD3 = rr;*/
+	// Test bench config
+	REG_PWM_CDTYUPD0 = fl;
+	REG_PWM_CDTYUPD1 = rr;
+	REG_PWM_CDTYUPD2 = rl;
+	REG_PWM_CDTYUPD3 = fr;
+	
 	//printf("Written Speed Values: %u %u %u %u\n", fl, fr, rl, rr);
 }
 

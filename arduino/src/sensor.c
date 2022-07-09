@@ -57,7 +57,8 @@ void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	// Configure MPU6050 gyro and accelerometer for bias calculation
 	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_CONFIG, 0x01);      // Set low-pass filter to 188 Hz
 	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_SMPLRT_DIV, 0x03);  // Set sample rate to 1 kHz
-	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_GYRO_CONFIG, 0x00);  // Set gyro full-scale to 250 degrees per second, maximum sensitivity
+	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_GYRO_CONFIG, 0x10);  // Set gyro full-scale to 1000 degrees per second
+	//sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_GYRO_CONFIG, 0x00);  // Set gyro full-scale to 250 degrees per second, maximum sensitivity
 	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_ACCEL_CONFIG, 0x00); // Set accelerometer full-scale to 2 g, maximum sensitivity
 	
 	//uint16_t  gyrosensitivity  = 131;   // = 131 LSB/degrees/sec
@@ -153,9 +154,14 @@ void calibrate(int16_t* arg_gyroBias, int16_t* arg_accelBias) {
 	//  writeByte(MPU6050_ADDRESS, ZG_OFFS_USRH, data[4]);
 	//  writeByte(MPU6050_ADDRESS, ZG_OFFS_USRL, data[5]);
 
-	arg_gyroBias[0] = gyro_bias[0]; // construct gyro bias in deg/s for later manual subtraction
-	arg_gyroBias[1] = gyro_bias[1];
-	arg_gyroBias[2] = gyro_bias[2];
+	//arg_gyroBias[0] = gyro_bias[0]; // construct gyro bias in deg/s for later manual subtraction
+	//arg_gyroBias[1] = gyro_bias[1];
+	//arg_gyroBias[2] = gyro_bias[2];
+	
+	// Hardcoded?
+	arg_gyroBias[0] = -146/4;
+	arg_gyroBias[1] = -190/4;
+	arg_gyroBias[2] = -348/4;
 
 	// Construct the accelerometer biases for push to the hardware accelerometer bias registers. These registers contain
 	// factory trim values which must be added to the calculated accelerometer biases; on boot up these registers will hold
@@ -288,7 +294,9 @@ void setupSensor(Twi* interface, uint32_t currentTicks) {
 	
 	
 	//Wake up MPU6050 and select gyro x clock
-	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_1, bit(MPU6050_CLKSEL_1));
+	//sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_1, bit(MPU6050_CLKSEL_1));
+	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_1, 0x01);
+	sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_PWR_MGMT_2, 0x00);
 	
     //Enable FIFO
 	//sendByte(sensor_interface, MPU6050_I2C_ADDRESS, MPU6050_FIFO_EN, bit(MPU6050_XG_FIFO_EN) | bit(MPU6050_YG_FIFO_EN) | bit(MPU6050_ZG_FIFO_EN) | bit(MPU6050_ACCEL_FIFO_EN));
@@ -317,7 +325,16 @@ void setupSensor(Twi* interface, uint32_t currentTicks) {
 	delay_ms(200);
 	printf("Sensor Setup done\n");
 }
-
+uint8_t print_counter = 0;
+int32_t t_avg = 0;
+int32_t x_avg = 0;
+int32_t y_avg = 0;
+int32_t z_avg = 0;
+int32_t accel_x_avg = 0;
+int32_t accel_y_avg = 0;
+int32_t accel_z_avg = 0;
+int32_t dataCounter = 0;
+int32_t lastSTick = 0;
 uint8_t updateSensorData(void) {
 	if(!sensor_data_ready) {
 		return 1;
@@ -344,7 +361,7 @@ uint8_t updateSensorData(void) {
 	accel_t_gyro.value.x_accel *= x_scale;
 	accel_t_gyro.value.y_accel *= y_scale;
 	accel_t_gyro.value.z_accel *= z_scale;
-	
+	//printf("X: %d\n", accel_t_gyro.value.x_gyro);
 	/*accel_t_gyro.value.x_accel -= accelBias[0];
 	accel_t_gyro.value.y_accel -= accelBias[1];
 	accel_t_gyro.value.z_accel -= accelBias[2];*/
@@ -352,6 +369,31 @@ uint8_t updateSensorData(void) {
 	accel_t_gyro.value.y_gyro -= gyroBias[1];
 	accel_t_gyro.value.z_gyro -= gyroBias[2];
 	
+	dataCounter++;
+	if(elapsed_time_s(lastSTick) > 1.0f) {
+		printf("Samples: %ld", dataCounter);
+		dataCounter = 0;
+		lastSTick = current_ticks();
+	}
+	/*print_counter++;
+	t_avg += accel_t_gyro.value.temperature;
+	x_avg += accel_t_gyro.value.x_gyro;
+	y_avg += accel_t_gyro.value.y_gyro;
+	z_avg += accel_t_gyro.value.z_gyro;
+	accel_x_avg += accel_t_gyro.value.x_accel;
+	accel_y_avg += accel_t_gyro.value.y_accel;
+	accel_z_avg += accel_t_gyro.value.z_accel;
+	#define LIMIT 32
+	if(print_counter % LIMIT == 0) {
+		printf("%ld %ld %ld %ld %ld %ld %ld %ld\n", 36+(t_avg/LIMIT/360), t_avg/LIMIT, x_avg/LIMIT, y_avg/LIMIT, z_avg/LIMIT, accel_x_avg/LIMIT, accel_y_avg/LIMIT, accel_z_avg/LIMIT);
+		t_avg = 0;
+		x_avg = 0;
+		y_avg = 0;
+		z_avg = 0;
+		accel_x_avg = 0;
+		accel_y_avg = 0;
+		accel_z_avg = 0;
+	}*/
 	#ifdef SWAP_X
 	accel_t_gyro.value.x_accel *= -1;
 	accel_t_gyro.value.x_gyro *= -1;
@@ -384,14 +426,14 @@ void getAnglesOfRawAcceleration(float* x_dst, float* y_dst) {
 	float z = (float)accel_t_gyro.value.z_accel;
 	
 	
-	*x_dst = atan2(y, z) - x_angle_offset;
-	*y_dst = -atan2(x, z) - y_angle_offset;
+	*x_dst = atan2f(y, z) - x_angle_offset;
+	*y_dst = -atan2f(x, z) - y_angle_offset;
 }
 
 void getRawValuesGyro(float* x_dst, float* y_dst, float* z_dst) {
-	*x_dst = (float)(accel_t_gyro.value.x_gyro) * DEG_TO_RAD_FACTOR/(DGS_250);
-	*y_dst = (float)(accel_t_gyro.value.y_gyro) * DEG_TO_RAD_FACTOR/(DGS_250);
-	*z_dst = (float)(accel_t_gyro.value.z_gyro) * DEG_TO_RAD_FACTOR/(DGS_250);
+	*x_dst = (float)(accel_t_gyro.value.x_gyro) * DEG_TO_RAD_FACTOR/(DGS_1000);
+	*y_dst = (float)(accel_t_gyro.value.y_gyro) * DEG_TO_RAD_FACTOR/(DGS_1000);
+	*z_dst = (float)(accel_t_gyro.value.z_gyro) * DEG_TO_RAD_FACTOR/(DGS_1000);
 }
 
 uint32_t getSensorTick(void) {

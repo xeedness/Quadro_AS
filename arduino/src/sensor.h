@@ -14,6 +14,7 @@
 
 #define G_1 16384.0f
 #define DGS_250 131.072f
+#define DGS_1000 32.768f
 #define G_1_MPS 9.80665f
 
 #define OFF_THRESH 1000

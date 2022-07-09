@@ -5,8 +5,11 @@ import matplotlib.pyplot as plt
 
 x1 = np.array([10, 20, 30, 40, 50, 60, 70, 80]).reshape((-1, 1))
 x2 = np.array([10, 20, 30, 40, 50, 60]).reshape((-1, 1))
+# 6 Zoll, 12.37V - 12,2V
 y1 = np.array([30, 81, 133, 182, 224, 274, 330, 406])
+# 6 Zoll, 11,55V - 11,48V
 y2 = np.array([28, 73, 120, 164, 212, 254, 318, 390])
+# 5 Zoll, 11,48V - 11,48V
 y3 = np.array([24, 64, 107, 147, 180, 206])
 
 model1 = LinearRegression().fit(x1, y1)

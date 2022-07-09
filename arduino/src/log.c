@@ -27,6 +27,17 @@ bool log_angular_velocity(angular_rate_t av)
 	return log_bytes(buf, av_length);
 }
 
+bool log_target(float x, float y, float z)
+{
+	size_t av_length = sizeof(float)*3 + 1;
+	uint8_t buf[av_length];
+	buf[0] = MSG_LOG_TARGET;
+	memcpy(buf + 1,	(char*)&x, sizeof(float));
+	memcpy(buf + 1 + sizeof(float),	(char*)&y, sizeof(float));
+	memcpy(buf + 1 + sizeof(float)*2,	(char*)&z, sizeof(float));
+	return log_bytes(buf, av_length);
+}
+
 bool log_pid(pid_values_t pid_val)
 {
 	size_t pid_length = sizeof(pid_values_t) + 1;

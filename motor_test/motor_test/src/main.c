@@ -32,6 +32,8 @@
 #include <stdio.h>
 
 #include "esc.h"
+#include "mpu9250.h"
+#include "ibus.h"
 
 void setup(void);
 void forceMeasurement(void);
@@ -39,7 +41,7 @@ void forceMeasurement(void);
 int main (void) {
     setup();
 	printf("Main Loop\n");
-    forceMeasurement();
+    //forceMeasurement();
 }
 
 void setup(void) {
@@ -54,12 +56,26 @@ void setup(void) {
 	
 	sysclk_enable_peripheral_clock(CONSOLE_UART_ID);
 	stdio_serial_init(CONF_UART, &uart_serial_options);
-	
+	//Enable sensor interrupt
+	pmc_enable_periph_clk(ID_PIOB);
 	// Component initialization
-	setupESC();	
+	//setupESC();	
 	
-	delay_s(10);
+	delay_s(2);
+	
+	ibus_setup();
+	ibus_loop();
+	
+	/*if(mpu9250_setup() == 0) {
+		mpu9250_loop();
+	}*/
+	
+	
+	
+	delay_s(1);
 	printf("Setup finished");
+	
+	
 }
 
 void forceMeasurement(void) {

@@ -16,6 +16,9 @@
 #include "pid.h"
 #include "status_display.h"
 #include "filtering.h"
+#include "log.h"
+
+void logging(void);
 
 
 uint32_t last_pid_ticks = 0;
@@ -158,12 +161,11 @@ void timed_running(void) {
 		orientation_t cur_orientation;
 		angular_rate_t cur_angular_rate;
 		getFilteredOrientation(&cur_orientation, &cur_angular_rate);
-		pid_step(cur_orientation.ax, cur_orientation.ay, cur_angular_rate.wx, cur_angular_rate.wy, altimeter_data.vertical_velocity);
-		last_pid_ticks = current_ticks();
-	}
-	if(elapsed_time_ms(last_speed_ticks) > esc_config.update_interval_ms) {
+		pid_step(cur_orientation.ax, cur_orientation.ay, cur_angular_rate.wx, cur_angular_rate.wy, cur_angular_rate.wz, altimeter_data.vertical_velocity);
 		update_speed();
-		last_speed_ticks = current_ticks();
+		last_pid_ticks = current_ticks();
+		
+		logging();
 	}
 }
 
@@ -173,4 +175,73 @@ void timed_landing(void) {
 }
 
 void timed_shutdown(void) {
+}
+
+
+void logging(void) {
+	if(log_config.orientation_enabled) {
+		orientation_t cur_orientation;
+		angular_rate_t cur_angular_velocity;
+		getFilteredOrientation(&cur_orientation, &cur_angular_velocity);
+			
+
+		cur_orientation.ax /= DEG_TO_RAD_FACTOR;
+		cur_orientation.ay /= DEG_TO_RAD_FACTOR;
+		
+		float tx,ty,tz;
+		// Log target instead of orientation
+		get_target(&tx, &ty);
+		tz = 0;
+		log_target(tx, ty, tz);
+		log_orientation(cur_orientation);
+		log_angular_velocity(cur_angular_velocity);
+		
+	}
+		
+	if(log_config.pid_enabled) {
+		//printf("PID Logging: %.2f %.2f\n", pid_rate_values.x, pid_rate_values.y);
+		log_pid(pid_rate_values);
+	}
+		
+	if(log_config.speed_enabled) {
+		//printf("Speed Logging: %d %d %d %d\n", speed.front_left_speed, speed.front_right_speed, speed.rear_left_speed, speed.rear_right_speed);
+		log_thrust(speed);
+	}
+		
+	if(log_config.altitude_enabled) {
+		altimeter_t altimeter_data;
+		getFilteredAltitude(&altimeter_data);
+		log_altimeter_data(altimeter_data);
+	}
+	
+	#define STATUS_INTERVAL_MS 1000
+	//#define ENABLE_UART_STATUS
+	#ifdef ENABLE_UART_STATUS
+	if(elapsed_time_ms(last_uart_ticks) > STATUS_INTERVAL_MS) {
+		switch(current_state) {
+			case(AWAIT_INIT):
+			printf("Await Init\n");
+			break;
+			case(IDLE):
+			printf("Idle\n");
+			break;
+			case(RUNNING):
+			printf("Running\n");
+			break;
+			case(LANDING):
+			printf("Landing\n");
+			break;
+			case(SHUTDOWN):
+			printf("Shutdown\n");
+			break;
+			default:
+			printf("No State\n");
+		}
+		printf("Thrust: %.2f\n", get_target_vertical_velocity());
+		float target_x, target_y;
+		get_target(&target_x, &target_y);
+		printf("Target: %.2f %.2f\n", target_x, target_y);
+		last_uart_ticks = current_ticks();
+	}
+	#endif
 }

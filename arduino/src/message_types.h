@@ -23,6 +23,7 @@
 #define MSG_LOG_THRUST (47)
 #define MSG_LOG_ANGULAR_VELOCITY (49)
 #define MSG_LOG_ALTIMETER_DATA (50)
+#define MSG_LOG_TARGET (51)
 
 #define MSG_CONTROL (48)
 

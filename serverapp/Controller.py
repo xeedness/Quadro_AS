@@ -7,6 +7,7 @@ from Config import Config
 import struct
 import threading
 import time
+import ControllerInput
 
 class Controller(Frame):
     def __init__(self, root, fill, side, expand, sender: Sender, config: Config):
@@ -19,6 +20,7 @@ class Controller(Frame):
         self.expand = expand
         self.initUI()
         self.start_alive_thread()
+        self.start_xbox_controller()
 
     def initUI(self):
         self.pack(fill=self.fill, side=self.side, expand=self.expand)
@@ -297,11 +299,48 @@ class Controller(Frame):
         self.throttle_input = Scale(self, from_=-100, to=100,tickinterval=1, variable=self.throttle, orient=HORIZONTAL, command=self.update_throttle)
         self.throttle_input.set(0)
 
-        self.throttle_input.grid(row=0, column=0, columnspan=8,sticky='NSEW')
+        self.throttle_input.grid(row=0, column=0, columnspan=2,sticky='NSEW')
+
+        self.angle_x = DoubleVar()
+        self.angle_x_input = Scale(self, from_=-180, to=180,tickinterval=1, variable=self.angle_x, orient=HORIZONTAL, command=self.update_control)
+        self.angle_x_input.set(0)
+
+        self.angle_x_input.grid(row=0, column=2, columnspan=3,sticky='NSEW')
+
+        self.angle_y = DoubleVar()
+        self.angle_y_input = Scale(self, from_=-180, to=180,tickinterval=1, variable=self.angle_y, orient=HORIZONTAL, command=self.update_control)
+        self.angle_y_input.set(0)
+
+        self.angle_y_input.grid(row=0, column=5, columnspan=3,sticky='NSEW')
 
     def start_alive_thread(self):
         self.alive_thread = threading.Thread(target=self.alive_loop, args=())
         self.alive_thread.start()
+
+    def start_xbox_controller(self):
+        self.xbox = ControllerInput.XboxController()
+        if(self.xbox.active):
+            self.xbox_thread = threading.Thread(target=self.xbox_control_thread, args=())
+            self.xbox_thread.start()
+
+    def xbox_control_thread(self):
+        time.sleep(5)
+        while(True):
+            time.sleep(0.11)
+            if(abs(self.xbox.LeftJoystickY) > 0.2):
+                self.throttle.set(self.xbox.LeftJoystickY*100)
+            else:
+                self.throttle.set(0)
+
+            if(abs(self.xbox.RightJoystickY) > 0.5):
+                self.angle_x.set(self.xbox.RightJoystickY*180)
+            else:
+                self.angle_x.set(0)
+            if(abs(self.xbox.RightJoystickX) > 0.2):
+                self.angle_y.set(self.xbox.RightJoystickX*180)
+            else:
+                self.angle_y.set(0)
+            self.update_control(1)
 
     def start(self):
         self.send_msg(MessageTypes.START, None)
@@ -426,3 +465,10 @@ class Controller(Frame):
         payload = bytearray()
         payload = payload + struct.pack("f", float(value)/100)
         self.send_msg(MessageTypes.THROTTLE, payload)
+
+    def update_control(self, value):
+        payload = bytearray()
+        payload = payload + struct.pack("f", float(self.throttle.get())/100)
+        payload = payload + struct.pack("f", float(self.angle_x.get())*3.14/180)
+        payload = payload + struct.pack("f", float(self.angle_y.get())*3.14/180)
+        self.send_msg(MessageTypes.CONTROL, payload)        

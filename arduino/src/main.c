@@ -43,6 +43,7 @@
 #include "status_display.h"
 #include "call_counter.h"
 #include "filtering.h"
+#include "ibus.h"
 
 #include "log.h"
 #include "uart_bridge.h"
@@ -66,14 +67,15 @@ int main (void) {
     setup();
 	reset_state();
 	printf("Main Loop\n");
-	
+	/*setupThrottleRange();
+	return 0;*/
 	
 	
     
     //axisTest();
 	
 	/*while(1) {
-		printf("Restart Please\n");
+		//printf("Restart Please\n");
 		delay_s(5);
 	}*/
 	
@@ -100,7 +102,7 @@ int main (void) {
 		
 		// Do all the time depending steps
 		//timed_pid_update();
-		timed_logging();
+		//timed_logging();
 		timed_state_tasks();
 		process_call_counters();
 		
@@ -131,22 +133,26 @@ void setup(void) {
 	}
 	
 	const usart_serial_options_t uart_serial_options = {
-		.baudrate = CONF_UART_BAUDRATE,
+		.baudrate = CONF_UART_CONSOLE_BAUDRATE,
 		.paritytype = CONF_UART_PARITY
 	};
 	sysclk_enable_peripheral_clock(CONSOLE_UART_ID);
-	stdio_serial_init(CONF_UART, &uart_serial_options);
+	stdio_serial_init(CONF_UART, &uart_serial_options);	
 	
 	// Component initialization
 	set_default_config();
+	controller_init(ENABLE_ESP_THROTTLE | ENABLE_ESP_ROTATION | ENABLE_ESP_POWER | ENABLE_IBUS_THROTTLE | ENABLE_IBUS_ROTATION | ENABLE_IBUS_POWER | ENABLE_IBUS_FLIGHTMODE);
 	timer_init();
 	pid_init();
+	ibus_setup();
 	uart_bridge_init();
 	status_display_init();
 	
-	setupAltimeter(TWI0);
-	setupSensor(TWI1, current_ticks());
+	
+	//setupAltimeter(TWI0);
+	delay_s(1);
 	setupESC();
+	setupSensor(TWI1, current_ticks());
 	setupKalman();
 	
 	reset_state();
@@ -196,7 +202,7 @@ void set_default_config(void) {
 	sensor_config.estimate_error_angular_velocity = 0.1f;
 	sensor_config.altitude_gain = -1.1547f; //-0.2828f; //-0.6325f;//-0.1925f;
 	sensor_config.speed_gain = -0.6667; //-0.2f;//-0.0185f;
-	sensor_config.use_kalman_orientation = 1;
+	sensor_config.use_kalman_orientation = 0;
 	sensor_config.enabled = 1;
 }
 
@@ -209,6 +215,7 @@ void set_default_config(void) {
 	//}
 //}
 
+uint32_t last_uart_ticks = 0;
 // Log PID values according to configured update interval
 void timed_logging(void) {
 	if(elapsed_time_ms(last_log_ticks) > log_config.log_interval_ms) {
@@ -221,6 +228,8 @@ void timed_logging(void) {
 			cur_orientation.ax /= DEG_TO_RAD_FACTOR;
 			cur_orientation.ay /= DEG_TO_RAD_FACTOR;
 			
+			// Log target instead of orientation
+			get_target(&cur_orientation.ax, &cur_orientation.ay);
 			log_orientation(cur_orientation);
 			log_angular_velocity(cur_angular_velocity);
 		}
@@ -243,4 +252,35 @@ void timed_logging(void) {
 		
 		last_log_ticks = current_ticks();
 	}
+	
+#define STATUS_INTERVAL_MS 1000
+//#define ENABLE_UART_STATUS
+#ifdef ENABLE_UART_STATUS
+	if(elapsed_time_ms(last_uart_ticks) > STATUS_INTERVAL_MS) {
+		switch(current_state) {
+			case(AWAIT_INIT):
+			printf("Await Init\n");
+			break;
+			case(IDLE):
+			printf("Idle\n");
+			break;
+			case(RUNNING):
+			printf("Running\n");
+			break;
+			case(LANDING):
+			printf("Landing\n");
+			break;
+			case(SHUTDOWN):
+			printf("Shutdown\n");
+			break;
+			default:
+			printf("No State\n");
+		}
+		printf("Thrust: %.2f\n", get_target_vertical_velocity());
+		float target_x, target_y;
+		get_target(&target_x, &target_y);
+		printf("Target: %.2f %.2f\n", target_x, target_y);
+		last_uart_ticks = current_ticks();
+	}
+#endif
 }

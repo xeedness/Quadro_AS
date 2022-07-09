@@ -13,23 +13,40 @@
 #include "config/conf_usart.h"
 #include "base85.h"
 #include "controller.h"
+#include "ibus.h"
 
 #define SEND_BUF_LENGTH (128)
 
 void uart_bridge_init(void) {
-	const usart_serial_options_t usart_serial_options = {
-		.baudrate = CONF_UART_BAUDRATE,
-		.paritytype = US_MR_PAR_NO,
-		.stopbits = US_MR_NBSTOP_1_BIT,
-		.charlength = US_MR_CHRL_8_BIT
-	};
-	sysclk_enable_peripheral_clock(ID_USART0);
-	usart_serial_init((Usart *)CONF_UART_CONTROL,(usart_serial_options_t *)(&usart_serial_options));
+	{
+		const usart_serial_options_t usart_serial_options = {
+			.baudrate = CONF_UART_CONTROL_BAUDRATE,
+			.paritytype = US_MR_PAR_NO,
+			.stopbits = US_MR_NBSTOP_1_BIT,
+			.charlength = US_MR_CHRL_8_BIT
+		};
+		sysclk_enable_peripheral_clock(ID_USART0);
+		usart_serial_init((Usart *)CONF_UART_CONTROL,(usart_serial_options_t *)(&usart_serial_options));
+		
+		usart_enable_interrupt(CONF_UART_CONTROL, UART_IER_RXRDY);
+		NVIC_SetPriority(USART0_IRQn, 1);
+		NVIC_EnableIRQ(USART0_IRQn);
+	}
 	
-	// Higher priority for control signals ?
-	usart_enable_interrupt(CONF_UART_CONTROL, UART_IER_RXRDY);
-	NVIC_SetPriority(USART0_IRQn, 1);
-	NVIC_EnableIRQ(USART0_IRQn);
+	{
+		const usart_serial_options_t usart_serial_options = {
+			.baudrate = CONF_UART_IBUS_BAUDRATE,
+			.paritytype = US_MR_PAR_NO,
+			.stopbits = US_MR_NBSTOP_1_BIT,
+			.charlength = US_MR_CHRL_8_BIT
+		};
+		sysclk_enable_peripheral_clock(ID_USART1);
+		usart_serial_init((Usart *)CONF_UART_IBUS,(usart_serial_options_t *)(&usart_serial_options));
+		
+		usart_enable_interrupt(CONF_UART_IBUS, UART_IER_RXRDY);
+		NVIC_SetPriority(USART1_IRQn, 3);
+		NVIC_EnableIRQ(USART1_IRQn);
+	}
 }
 
 static bool uart_bridge_send_wrapped(uint8_t* data, size_t length)
@@ -100,4 +117,16 @@ ISR(USART0_Handler)
 	
 	//uint32_t dummy = usart_get_interrupt_mask(USART0);
 }
+
+ISR(USART1_Handler)
+{
+	static uint8_t value;
+	
+	usart_serial_read_packet(CONF_UART_IBUS, &value, 1);
+	if(ibus_read(value) == 0) {
+		interpret_channels(ibus_data(), IBUS_CHANNEL_COUNT);
+	}
+}
+
+
 

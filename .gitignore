@@ -1,0 +1,6 @@
+serverapp/build/*
+serverapp/dist/*
+motor_test/motor_test/Debug/**
+*.o
+*.spec
+*.d

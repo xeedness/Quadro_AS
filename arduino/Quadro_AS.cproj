@@ -584,6 +584,12 @@
     <Compile Include="src\filtering.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\ibus.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ibus.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\log.c">
       <SubType>compile</SubType>
     </Compile>

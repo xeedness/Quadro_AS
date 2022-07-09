@@ -70,6 +70,8 @@ class Receiver():
                 self.throttle_update(data)
             elif msg_type == MessageTypes.ALTIMETER_DATA_LOG:
                 self.altimeter_data_update(data)
+            elif msg_type == MessageTypes.TARGET_DATA_LOG:
+                self.target_data_update(data)
             else:
                 print("Could not interpret msg_type: "+str(msg_type))
         except:
@@ -109,6 +111,12 @@ class Receiver():
         self.plot_handler.record_altitude(altitude)
         self.plot_handler.record_vertical_velocity(vertical_velocity)
         self.plot_handler.record_vertical_acceleration(vertical_acceleration)
+
+    def target_data_update(self, data):
+        [x, y, z] = struct.unpack('fff', data[0:12])
+        self.plot_handler.record_x_target(x)
+        self.plot_handler.record_y_target(y)
+        self.plot_handler.record_z_target(z)
 
     def send_init(self):
         self.controller.send_config()

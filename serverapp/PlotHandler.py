@@ -17,13 +17,17 @@ class PlotHandler():
         self.vertical_acceleration_graph = Plot.Graph(z_plot, "az", "red")
         self.vertical_velocity_graph = Plot.Graph(z_plot, "vz", "green")
         self.altitute_graph = Plot.Graph(z_plot, "Altitude", "blue")
+        self.z_angle_v_graph = Plot.Graph(z_plot, "ZAV", "pink")
+        self.z_target_graph = Plot.Graph(z_plot, "ZT", "orange")
 
         self.y_angle_graph = Plot.Graph(y_plot, "YAngle", "red")
         self.y_angle_v_graph = Plot.Graph(y_plot, "YAV", "green")
+        self.y_target_graph = Plot.Graph(y_plot, "YT", "orange")
         self.y_pid_graph = Plot.Graph(y_plot, "YPID", "blue")
 
         self.x_angle_graph = Plot.Graph(x_plot, "XAngle", "red")
         self.x_angle_v_graph = Plot.Graph(x_plot, "XAV", "green")
+        self.x_target_graph = Plot.Graph(x_plot, "XT", "orange")
         self.x_pid_graph = Plot.Graph(x_plot, "XPID", "blue")
 
         self.lf_graph = Plot.Graph(throttle_plot, "left front", "green")
@@ -100,14 +104,22 @@ class PlotHandler():
             self.z_angle_graph.record_value(self.scale_angle(angle))
 
     def record_x_av(self, av):
-        self.x_angle_v_graph.record_value(self.scale_angle(av))
+        self.x_angle_v_graph.record_value(self.scale_angle_v(av))
         
     def record_y_av(self, av):
-        self.y_angle_v_graph.record_value(self.scale_angle(av))
+        self.y_angle_v_graph.record_value(self.scale_angle_v(av))
 
     def record_z_av(self, av):
-        if False:
-            self.z_angle_v_graph.record_value(self.scale_angle(av))
+        self.z_angle_v_graph.record_value(self.scale_angle_v(av))
+
+    def record_x_target(self, av):
+        self.x_target_graph.record_value(self.scale_angle_v(av))
+        
+    def record_y_target(self, av):
+        self.y_target_graph.record_value(self.scale_angle_v(av))
+
+    def record_z_target(self, av):
+        self.z_target_graph.record_value(self.scale_angle_v(av))
 
     def record_x_pid(self, pid):
         self.x_pid_graph.record_value(self.scale_pid(pid))
@@ -138,7 +150,15 @@ class PlotHandler():
 
     def record_vertical_acceleration(self, value):
         self.vertical_acceleration_graph.record_value(self.scale_acceleration(value))
-        
+    
+    def scale_angle_v(self, value):
+        r = value*(180/3.14)/(self.max_angle) + 0.5
+        if r > 1:
+            r = 1
+        if r < 0:
+            r = 0
+        return  r
+
     def scale_angle(self, value):
         r = value/(self.max_angle*2) + 0.5
         if r > 1:
@@ -148,7 +168,7 @@ class PlotHandler():
         return  r
 
     def scale_pid(self, value):
-        return value/120 + 0.5
+        return value + 0.5
 
     def scale_throttle(self, value):
         return value

@@ -316,9 +316,9 @@ void updateKomplementaryOrientationInternal(orientation_t measured_phi, angular_
 		current_orientation.ax = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ax) + sensor_config.acceleration_weight*measured_phi.ax;
 		current_orientation.ay = (1.0f-sensor_config.acceleration_weight)*(gyroOrientation.ay) + sensor_config.acceleration_weight*measured_phi.ay;
 		current_orientation.az = gyroOrientation.az;
-		
-		current_angular_rate.wx = measured_omega.wx;
-		current_angular_rate.wy = measured_omega.wy;
-		current_angular_rate.wz = measured_omega.wz;
+#define AR_RATE 0.9f
+		current_angular_rate.wx = (1.0f-AR_RATE) * current_angular_rate.wx + AR_RATE * measured_omega.wx;
+		current_angular_rate.wy = (1.0f-AR_RATE) * current_angular_rate.wx + AR_RATE * measured_omega.wy;
+		current_angular_rate.wz = (1.0f-AR_RATE) * current_angular_rate.wx + AR_RATE * measured_omega.wz;
 	}	
 }

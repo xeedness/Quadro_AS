@@ -71,7 +71,7 @@
 
 //#define CONF_BOARD_TWI0
 
-//#define CONF_BOARD_TWI1
+#define CONF_BOARD_TWI1
 
 /* Configure USART RXD pin */
 #define CONF_BOARD_USART_RXD

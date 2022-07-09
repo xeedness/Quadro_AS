@@ -6,6 +6,9 @@
 #define ESC_HIGH 2000
 #define ESC_LOW 1000
 
+//#define ESC_HIGH 500
+//#define ESC_LOW 250
+
 typedef struct speed {
 	float front_left_speed;
 	float front_right_speed;

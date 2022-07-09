@@ -48,6 +48,9 @@
 #include "log.h"
 #include "uart_bridge.h"
 
+#include <string.h>
+#include "persistent_mem.h"
+
 
 void setup(void);
 void set_default_config(void);
@@ -70,8 +73,16 @@ int main (void) {
 	/*setupThrottleRange();
 	return 0;*/
 	
+	/* Kleiner Memtest 4 ze fun */
+	char data[2048];
+	read_data((uint8_t*)data, sizeof(data));
+	printf("Persistent mem contents:\n");
+	printf(data);
 	
-    
+	const char str[] = "HERPA DERPA WOLOLOLO I BIMS 1 MIRCOCONTROLLER !!!11\n"; 
+	uint32_t res = store_data( (uint8_t*)str, strlen(str)+1);
+    /* Kleiner Memtest 4 ze fun ende */
+	
     //axisTest();
 	
 	/*while(1) {
